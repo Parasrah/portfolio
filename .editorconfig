@@ -1,0 +1,16 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[*.{ex,js,jsx,json,adoc,html,scss,nix,yml,md}]
+charset = utf-8
+
+[*.{ex,js,jsx,json,adoc,html,scss,nix,yml,md}]
+indent_style = space
+indent_size = 2
+
+[*.elm]
+indent_style = space
+indent_size = 4

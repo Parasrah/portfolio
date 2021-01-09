@@ -1,7 +1,7 @@
 {
   description = "My personal web portfolio";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
@@ -43,10 +43,13 @@
                   ENV = "${name}-${env}";
 
                   buildInputs = with pkgs; [
+                    yarn
+                    nodejs
                     httpie
                     go-task
-                    nodejs-14_x
                     glibcLocales
+
+                    nodePackages.prettier
 
                     elmPackages.elm
                     elmPackages.elm-test
