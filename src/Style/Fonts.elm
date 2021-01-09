@@ -42,3 +42,13 @@ boldItalic =
     , Font.italic
     , Font.bold
     ]
+
+
+header : List (Attribute msg)
+header =
+    [ Font.family
+        [ Font.typeface "Roboto"
+        , Font.sansSerif
+        ]
+    , Font.medium
+    ]

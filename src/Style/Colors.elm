@@ -35,8 +35,12 @@ secondaryDark =
 
 background : Color
 background =
-    rgb255 18 18 18
+    rgb255 32 33 36
 
+
+dp00 : Color
+dp00 =
+    rgba255 255 255 255 0.00
 
 dp01 : Color
 dp01 =
@@ -70,4 +74,8 @@ dp08 =
 
 primaryFont : Color
 primaryFont =
-    rgba255 255 255 255 0.9
+    rgba255 255 255 255 0.87
+
+secondaryFont : Color
+secondaryFont =
+    rgba255 255 255 255 0.60

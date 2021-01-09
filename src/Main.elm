@@ -3,8 +3,9 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest)
 import Browser.Dom exposing (Error(..))
 import Browser.Navigation exposing (Key)
-import Element exposing (Color, Device, Element, fill, layout, px)
+import Element exposing (Color, Device, Element, fill, layout, px, text)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Json.Decode as D exposing (Decoder, Value, int)
 import Json.Decode.Pipeline exposing (required)
@@ -102,10 +103,13 @@ view model =
     { title = "Brad Pfannmuller"
     , body =
         [ layout
-            [ Element.height fill
-            , Element.width fill
-            , Background.color Style.Colors.background
-            ]
+            ([ Element.height fill
+             , Element.width fill
+             , Background.color Style.Colors.background
+             , Font.color Style.Colors.primaryFont
+             ]
+                ++ Style.Fonts.regular
+            )
             (case model of
                 Err err ->
                     Element.el
@@ -122,13 +126,12 @@ view model =
 viewPage : Page -> Element Msg
 viewPage page =
     Element.column
-        []
-        [ viewCard page Style.Colors.dp01
-        , viewCard page Style.Colors.dp02
-        , viewCard page Style.Colors.dp03
-        , viewCard page Style.Colors.dp04
-        , viewCard page Style.Colors.dp06
-        , viewCard page Style.Colors.dp08
+        [ Element.height fill
+        , Element.width fill
+        ]
+        [ viewHeader page
+        , viewCard page
+            [ text "this is a test" ]
         ]
 
 
@@ -137,17 +140,76 @@ viewTimeline page =
     Element.none
 
 
-viewCard : Page -> Color -> Element Msg
-viewCard page background =
+viewCard : Page -> List (Element Msg) -> Element Msg
+viewCard page content =
+    let
+        rounded =
+            5
+    in
     Element.column
-        ([ Background.color background
-         , Element.height <| px 200
-         , Element.width <| px 200
-         , Font.color <| Style.Colors.primaryFont
+        [ Background.color Style.Colors.dp01
+        , Element.height <| px 500
+        , Element.width <| px 400
+        , Font.color <| Style.Colors.primaryFont
+        , Element.alignLeft
+        , Element.moveRight 50
+        , Element.centerY
+        , Border.rounded rounded
+        , Border.solid
+        ]
+        [ Element.el
+            [ Background.color Style.Colors.dp01
+            , Element.width fill
+            , Element.height <| px 50
+            , Border.roundEach { topLeft = rounded, topRight = rounded, bottomLeft = 0, bottomRight = 0 }
+            ]
+            (Element.el
+                [ Element.centerY
+                , Element.moveRight 10
+                ]
+                (Element.text "IBM Canada")
+            )
+        , Element.paragraph
+            []
+            content
+        ]
+
+
+viewHeader : Page -> Element Msg
+viewHeader page =
+    Element.row
+        ([ Element.height <| px 75
+         , Element.width fill
          ]
-            ++ Style.Fonts.regular
+            ++ Style.Fonts.header
         )
-        [ Element.text "Hello World"
+        [ Element.el
+            [ Element.moveRight 30
+            , Font.size 30
+            ]
+            (Element.text "Brad Pfannmuller")
+        , Element.row
+            [ Element.height fill
+            , Element.alignRight
+            , Element.moveLeft 40
+            , Element.spacing 35
+            ]
+            [ Element.image
+                [ Element.alignRight ]
+                { src = "/github.svg"
+                , description = "Github, where I host most of my code"
+                }
+            , Element.image
+                [ Element.alignRight ]
+                { src = "/linkedin.svg"
+                , description = "LinkedIn, the popular career platform"
+                }
+            , Element.image
+                [ Element.alignRight ]
+                { src = "/mail.svg"
+                , description = "Send me an email!"
+                }
+            ]
         ]
 
 
