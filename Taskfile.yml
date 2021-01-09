@@ -1,0 +1,42 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - nix build ..#firelyte-spa
+
+  build:
+    cmds:
+      - ./node_modules/.bin/parcel build src/index.html
+    env:
+      WEBPACK_ENV: prod
+
+  deps:
+    cmds:
+      - yarn
+
+  clean:
+    cmds:
+      - cmd: rm -rf ./dist
+        ignore_error: true
+      - cmd: rm -rf ./.cache
+        ignore_error: true
+      - cmd: rm -rf ./elm-stuff
+        ignore_error: true
+      - cmd: rm -rf ./node_modules/
+        ignore_error: true
+    silent: true
+
+  format:
+    cmds:
+      - elm-format src/ --yes
+
+  test:
+    cmds:
+      - elm-test
+
+  run:
+    cmds:
+      - ./node_modules/.bin/parcel src/index.html
