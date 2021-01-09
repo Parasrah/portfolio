@@ -28,7 +28,13 @@
           rec {
             overlay = import ./nix/overlay.nix;
 
-            packages = {};
+            packages =
+              let
+                env = "prod";
+              in
+                {
+                  "portfolio" = import ./default.nix { inherit env pkgs; };
+                };
 
             devShell =
               let
@@ -47,6 +53,8 @@
                     nodejs
                     httpie
                     go-task
+                    elm2nix
+                    yarn2nix
                     glibcLocales
 
                     nodePackages.prettier

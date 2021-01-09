@@ -1,6 +1,6 @@
 module Style.Colors exposing (..)
 
-import Element exposing (Color, rgb255)
+import Element exposing (Color, rgb255, rgba255)
 
 
 primary : Color
@@ -35,14 +35,39 @@ secondaryDark =
 
 background : Color
 background =
-    rgb255 225 226 225
+    rgb255 18 18 18
 
 
-card : Color
-card =
-    rgb255 255 255 255
+dp01 : Color
+dp01 =
+    rgba255 255 255 255 0.05
+
+
+dp02 : Color
+dp02 =
+    rgba255 255 255 255 0.07
+
+
+dp03 : Color
+dp03 =
+    rgba255 255 255 255 0.08
+
+
+dp04 : Color
+dp04 =
+    rgba255 255 255 255 0.09
+
+
+dp06 : Color
+dp06 =
+    rgba255 255 255 255 0.11
+
+
+dp08 : Color
+dp08 =
+    rgba255 255 255 255 0.12
 
 
 primaryFont : Color
 primaryFont =
-    rgb255 255 255 255
+    rgba255 255 255 255 0.9

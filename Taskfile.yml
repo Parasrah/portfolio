@@ -5,27 +5,23 @@ version: '3'
 tasks:
   default:
     cmds:
-      - yarn build
+      - nix build .#portfolio
 
   build:
     cmds:
-      - yarn build
+      - ./node_modules/.bin/webpack
     env:
       WEBPACK_ENV: prod
 
   deps:
     cmds:
       - yarn
+      - elm2nix convert > elm-srcs.nix
+      - elm2nix snapshot > registry.dat
 
   clean:
     cmds:
       - cmd: rm -rf ./dist
-        ignore_error: true
-      - cmd: rm -rf ./.cache
-        ignore_error: true
-      - cmd: rm -rf ./elm-stuff
-        ignore_error: true
-      - cmd: rm -rf ./node_modules/
         ignore_error: true
     silent: true
 
@@ -39,4 +35,4 @@ tasks:
 
   run:
     cmds:
-      - yarn start
+      - ./node_modules/.bin/webpack-dev-server

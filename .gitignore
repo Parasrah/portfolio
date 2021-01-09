@@ -4,3 +4,4 @@
 /elm-stuff/
 *.tar.gz
 /.parcel-cache
+/result
