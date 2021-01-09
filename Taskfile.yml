@@ -5,11 +5,11 @@ version: '3'
 tasks:
   default:
     cmds:
-      - nix build ..#firelyte-spa
+      - yarn build
 
   build:
     cmds:
-      - ./node_modules/.bin/parcel build src/index.html
+      - yarn build
     env:
       WEBPACK_ENV: prod
 
@@ -39,4 +39,4 @@ tasks:
 
   run:
     cmds:
-      - ./node_modules/.bin/parcel src/index.html
+      - yarn start
