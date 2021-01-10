@@ -19,20 +19,14 @@
           enable = true;
           recommendedGzipSettings = true;
           recommendedOptimisation = true;
-          # recommendedTlsSettings = true;
+          recommendedTlsSettings = true;
           virtualHosts."parasrah.com" = {
-            # onlySSL = true;
-            # enableACME = true;
+            forceSSL = true;
             root = "${portfolio}/www";
+            sslCertificate = ./.secrets/ssl/parasrah_com.crt;
+            sslCertificateKey = ./.secrets/ssl/parasrah.key;
           };
         };
       };
-
-      # security.acme = {
-      #   acceptTerms = true;
-      #   certs = {
-      #     "parasrah.com".email = "portfolio@parasrah.com";
-      #   };
-      # };
     };
 }
