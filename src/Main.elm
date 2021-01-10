@@ -8,7 +8,7 @@ import Element exposing (Attribute, Color, Device, DeviceClass(..), Element, fil
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Region
+import Element.Region as Region
 import Html.Attributes
 import Json.Decode as D exposing (Decoder, Value, int)
 import Json.Decode.Pipeline exposing (required)
@@ -93,6 +93,7 @@ type Msg
     | OnResize
     | OnScroll
     | OnCardLocations (Result Browser.Dom.Error (List Browser.Dom.Element))
+    | ReadMore Int
 
 
 
@@ -210,10 +211,14 @@ update msg model =
                         Err err ->
                             ( DomError err, Cmd.none )
 
+                ReadMore index ->
+                    ( model, fetchCardLocations page.cardMetadata )
+
         _ ->
             ( model, Cmd.none )
 
 
+-- TODO: should I delay this slightly to ensure rendering happens first?
 fetchCardLocations : List cards -> Cmd Msg
 fetchCardLocations cards =
     let
@@ -300,7 +305,7 @@ viewPage : IPage -> Element Msg
 viewPage page =
     Element.column
         [ Element.paddingEach
-            { top = headerHeight page.device.class
+            { top = headerHeight page.device.class + 20
             , bottom = 0
             , left = 0
             , right = 0
@@ -315,8 +320,35 @@ viewTimeline page =
     Element.column
         [ Element.height fill
         , Element.width fill
-        , Element.spacing 50
-        , Element.Region.mainContent
+        , let
+            paddingX =
+                case page.device.class of
+                    Phone ->
+                        30
+
+                    _ ->
+                        50
+          in
+          Element.paddingEach
+            { top = 0
+            , left = paddingX
+            , right = paddingX
+            , bottom = 100
+            }
+        , Element.spacing <|
+            case page.device.class of
+                Phone ->
+                    50
+
+                Tablet ->
+                    70
+
+                Desktop ->
+                    50
+
+                BigDesktop ->
+                    100
+        , Region.mainContent
         ]
         (List.map2 (\metadata info -> ( info, metadata )) page.cardMetadata cardInfo
             |> List.indexedMap
@@ -373,8 +405,7 @@ viewTimeline page =
                                     ]
                     in
                     Element.row
-                        [ Element.padding 50
-                        , Element.width fill
+                        [ Element.width fill
                         ]
                         (if even then
                             rowElements
@@ -398,6 +429,31 @@ viewCard attrs device info =
     let
         rounded =
             5
+
+        headerFooterHeight =
+            case device.class of
+                Phone ->
+                    50
+
+                BigDesktop ->
+                    70
+
+                _ ->
+                    60
+
+        headerFontSize =
+            case device.class of
+                Phone ->
+                    20
+
+                Tablet ->
+                    20
+
+                Desktop ->
+                    20
+
+                BigDesktop ->
+                    25
     in
     Element.column
         ([ Background.color Style.Colors.dp01
@@ -410,32 +466,95 @@ viewCard attrs device info =
          ]
             ++ attrs
         )
-        [ Element.el
+        ([ Element.el
             [ Background.color Style.Colors.dp01
             , Element.width fill
-            , Element.height <| px 50
+            , Element.height <| px headerFooterHeight
             , Border.roundEach { topLeft = rounded, topRight = rounded, bottomLeft = 0, bottomRight = 0 }
             ]
             (Element.el
                 [ Element.centerY
-                , Element.moveRight 30
+                , Element.paddingXY 30 0
+                , Font.size headerFontSize
+                , Region.heading 2
                 ]
                 (Element.text info.title)
             )
-        , Element.textColumn
-            [ Element.padding 15
+         , Element.textColumn
+            [ Element.padding <|
+                case device.class of
+                    Phone ->
+                        20
+
+                    _ ->
+                        15
             , Font.size <|
                 case device.class of
                     Phone ->
                         15
 
-                    _ ->
+                    Tablet ->
                         18
+
+                    Desktop ->
+                        18
+
+                    BigDesktop ->
+                        22
             , Element.width fill
             , Element.spacing 20
             ]
             (info.content device)
-        ]
+         ]
+            ++ (if List.isEmpty info.tags then
+                    []
+
+                else
+                    [ Element.row
+                        [ Element.height <| px headerFooterHeight
+                        , Element.width fill
+                        , Element.spacing <|
+                            case device.class of
+                                Phone ->
+                                    5
+
+                                _ ->
+                                    10
+                        , let
+                            paddingX =
+                                case device.class of
+                                    Phone ->
+                                        10
+
+                                    _ ->
+                                        20
+                          in
+                          Element.paddingXY 20 0
+                        ]
+                        (List.map
+                            (\tag ->
+                                Element.el
+                                    [ Font.size <|
+                                        case device.class of
+                                            Phone ->
+                                                12
+
+                                            _ ->
+                                                15
+                                    , Border.solid
+                                    , Border.width 1
+                                    , Border.rounded 15
+                                    , Border.color Style.Colors.secondaryFont
+                                    , Font.color Style.Colors.secondaryFont
+                                    , Element.padding 7
+                                    ]
+                                    (Element.text tag)
+                            )
+                            info.tags
+                        )
+                    ]
+               )
+        )
 
 
 headerHeight : DeviceClass -> Int
@@ -457,13 +576,13 @@ viewHeader page =
     Element.row
         ([ Element.height <| px <| headerHeight page.device.class
          , Element.width fill
-         , Element.Region.navigation
+         , Region.navigation
          , Background.color Style.Colors.background
          ]
             ++ Style.Fonts.header
         )
         [ Element.link
-            [ Element.Region.heading 1
+            [ Region.heading 1
             , Element.moveRight 30
             , Font.size titleFont
             ]
@@ -583,7 +702,7 @@ scaleImage oWidth oHeight width =
             toFloat oWidth / toFloat oHeight
 
         height =
-            floor <| toFloat width * ratio
+            floor <| toFloat width / ratio
     in
     [ Element.height <| px height
     , Element.width <| px width
@@ -592,7 +711,44 @@ scaleImage oWidth oHeight width =
 
 cardInfo : List CardInfo
 cardInfo =
-    [ CardInfo "FireLyte"
+    [ CardInfo "Nude Solutions"
+        (\device ->
+            [ Element.paragraph
+                []
+                [ Element.newTabLink
+                    [ Font.underline ]
+                    { url = "https://www.nudesolutions.com/"
+                    , label = Element.text "Nude Solutions"
+                    }
+                , Element.text <|
+                    " is a software company focused on building a modern software platform to improve"
+                        ++ " the insurance industry for all participants, be it insurance companies, brokers or the customers"
+                        ++ " themselves"
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "I have been working at Nude Solutions since 2019, where I've been working on a new"
+                        ++ " project that would simplify the process of offering insurance products on our platform."
+                        ++ " As part of this I spear-headed development on an in-house interpreter called SimpleCode"
+                        ++ " so our customers can convey complicated business logic without needing to learn a full"
+                        ++ " fledged programming language."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "In addition, I've been very involved with the move to .NET Core, Linux support, Docker adoption and the"
+                        ++ " use of Azure App Services by the company. I also recently gave a company-wide presentation"
+                        ++ " on advanced techniques in Typescript."
+                ]
+            ]
+        )
+        [ ".NET"
+        , "React"
+        , "Typescript"
+        , "Azure"
+        ]
+    , CardInfo "FireLyte"
         (\device ->
             [ Element.paragraph
                 []
@@ -622,15 +778,43 @@ cardInfo =
                 []
                 [ Element.text <|
                     " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
-                        ++ " and couldn't help feeling technology could dramatically improve the experience, both for those already working in"
-                        ++ " the camping industry, and those that just love camping! What I have so far is built using Elixir/Phoenix, Elm and"
-                        ++ " Nix. If you're interested you can take a look at it "
+                        ++ " and couldn't help feeling technology would dramatically improve the experience, both for those already working in"
+                        ++ " the camping industry, and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
+                        ++ " Nix. If you're interested you can take a look at the source "
+                , Element.newTabLink
+                    [ Font.underline ]
+                    { url = "https://github.com/code-golem/campground"
+                    , label = Element.text "here"
+                    }
+                , Element.text "!"
                 ]
             ]
         )
         [ "Nix"
         , "Elm"
         , "Elixir"
+        ]
+    , CardInfo "Private Internet Access"
+        (\device ->
+            [ Element.paragraph
+                []
+                [ Element.text "Finish PIA pls" ]
+            ]
+        )
+        [ "Privacy"
+        , "React"
+        , "WebExtensions"
+        ]
+    , CardInfo "Ease"
+        (\device ->
+            [ Element.paragraph
+                []
+                [ Element.text "Finish Ease pls" ]
+            ]
+        )
+        [ "P2P"
+        , "React"
+        , "Redux"
         ]
     , CardInfo "IBM Canada"
         (\device ->
@@ -641,71 +825,8 @@ cardInfo =
         )
         [ "DevOps"
         , "Internship"
+        , "Selenium"
         ]
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
-    , CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
-            ]
-        )
-        []
     ]
 
 
