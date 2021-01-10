@@ -253,37 +253,60 @@ view : Model -> Document Msg
 view model =
     { title = "Brad Pfannmuller"
     , body =
-        [ layout
-            ([ Element.width fill
-             , Background.color Style.Colors.background
-             , Font.color Style.Colors.primaryFont
-             ]
-                ++ Style.Fonts.regular
-            )
-            (case model of
-                JsonError err ->
-                    Element.el
+        case model of
+            JsonError err ->
+                [ layout
+                    ([ Element.width fill
+                     , Background.color Style.Colors.background
+                     , Font.color Style.Colors.primaryFont
+                     ]
+                        ++ Style.Fonts.regular
+                    )
+                    (Element.el
                         [ Font.color Style.Colors.primaryFont ]
                         (Element.text "failed to parse json")
+                    )
+                ]
 
-                DomError err ->
-                    Element.el
+            DomError err ->
+                [ layout
+                    ([ Element.width fill
+                     , Background.color Style.Colors.background
+                     , Font.color Style.Colors.primaryFont
+                     ]
+                        ++ Style.Fonts.regular
+                    )
+                    (Element.el
                         [ Font.color Style.Colors.primaryFont ]
                         (Element.text "failed to find cards")
+                    )
+                ]
 
-                Page page ->
-                    viewPage page
-            )
-        ]
+            Page page ->
+                [ layout
+                    ([ Element.width fill
+                     , Background.color Style.Colors.background
+                     , Font.color Style.Colors.primaryFont
+                     , Element.inFront <| viewHeader page
+                     ]
+                        ++ Style.Fonts.regular
+                    )
+                    (viewPage page)
+                ]
     }
 
 
 viewPage : IPage -> Element Msg
 viewPage page =
     Element.column
-        []
-        [ viewHeader page
-        , viewTimeline page
+        [ Element.paddingEach
+            { top = headerHeight page.device.class
+            , bottom = 0
+            , left = 0
+            , right = 0
+            }
+        ]
+        [ viewTimeline page
         ]
 
 
@@ -415,28 +438,34 @@ viewCard attrs device info =
         ]
 
 
+headerHeight : DeviceClass -> Int
+headerHeight class =
+    75
+
+
 viewHeader : IPage -> Element Msg
 viewHeader page =
     let
-        spacing =
+        ( spacing, titleFont ) =
             case page.device.class of
                 Phone ->
-                    10
+                    ( 15, 25 )
 
                 _ ->
-                    35
+                    ( 35, 30 )
     in
     Element.row
-        ([ Element.height <| px 75
+        ([ Element.height <| px <| headerHeight page.device.class
          , Element.width fill
          , Element.Region.navigation
+         , Background.color Style.Colors.background
          ]
             ++ Style.Fonts.header
         )
         [ Element.link
             [ Element.Region.heading 1
             , Element.moveRight 30
-            , Font.size 30
+            , Font.size titleFont
             ]
             { url = "/"
             , label = Element.text "Brad Pfannmuller"
