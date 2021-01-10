@@ -33,7 +33,7 @@
                 env = "prod";
               in
                 {
-                  "portfolio" = import ./default.nix { inherit env pkgs; };
+                  portfolio = pkgs.callPackage ./default.nix { inherit env pkgs; };
                 };
 
             devShell =
@@ -55,6 +55,7 @@
                     go-task
                     elm2nix
                     yarn2nix
+                    git-crypt
                     glibcLocales
 
                     nodePackages.prettier

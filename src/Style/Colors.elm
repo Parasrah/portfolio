@@ -40,7 +40,8 @@ background =
 
 dp00 : Color
 dp00 =
-    rgba255 255 255 255 0.00
+    rgba255 255 255 255 0.0
+
 
 dp01 : Color
 dp01 =
@@ -76,6 +77,7 @@ primaryFont : Color
 primaryFont =
     rgba255 255 255 255 0.87
 
+
 secondaryFont : Color
 secondaryFont =
-    rgba255 255 255 255 0.60
+    rgba255 255 255 255 0.6
