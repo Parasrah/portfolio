@@ -4,7 +4,7 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Dom exposing (Error(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
-import Element exposing (Attribute, Color, Device, Element, fill, layout, px, text)
+import Element exposing (Attribute, Color, Device, DeviceClass(..), Element, fill, layout, px, text)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -32,7 +32,7 @@ type alias IPage =
     { key : Key
     , dimensions : Dimensions
     , device : Device
-    , cards : List Card
+    , cardMetadata : List CardMetadata
     }
 
 
@@ -41,17 +41,24 @@ type alias Flags =
     }
 
 
-type alias Card =
-    { content : List (Element Msg)
-    , title : String
-    , shown : Bool
+
+-- will be stored in model
+
+
+type alias CardMetadata =
+    { shown : Bool
     , top : Maybe Int
     }
 
 
+
+-- info used to render card
+
+
 type alias CardInfo =
-    { content : List (Element Msg)
-    , title : String
+    { title : String
+    , content : Device -> List (Element Msg)
+    , tags : List String
     }
 
 
@@ -116,24 +123,18 @@ init flagsJson url key =
                         , width = ceiling viewport.width
                         }
 
-                cards =
+                cardMetadata =
                     List.map
-                        (\c ->
-                            { content = c.content
-                            , title = c.title
-                            , shown = True
-                            , top = Nothing
-                            }
-                        )
+                        (\c -> CardMetadata True Nothing)
                         cardInfo
             in
             ( Page
                 { key = key
                 , device = device
                 , dimensions = flags.dimensions
-                , cards = cards
+                , cardMetadata = cardMetadata
                 }
-            , fetchCardLocations cards
+            , fetchCardLocations cardMetadata
             )
 
         Err err ->
@@ -180,7 +181,7 @@ update msg model =
                 OnResize ->
                     ( model
                     , Cmd.batch
-                        [ fetchCardLocations page.cards
+                        [ fetchCardLocations page.cardMetadata
                         , Task.perform OnDimensions Browser.Dom.getViewport
                         ]
                     )
@@ -196,15 +197,15 @@ update msg model =
                     case res of
                         Ok locations ->
                             let
-                                cards =
+                                cardMetadata =
                                     List.map2
                                         (\card location ->
                                             { card | top = Just <| ceiling location.element.y }
                                         )
-                                        page.cards
+                                        page.cardMetadata
                                         locations
                             in
-                            ( Page { page | cards = cards }, Cmd.none )
+                            ( Page { page | cardMetadata = cardMetadata }, Cmd.none )
 
                         Err err ->
                             ( DomError err, Cmd.none )
@@ -213,7 +214,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-fetchCardLocations : List Card -> Cmd Msg
+fetchCardLocations : List cards -> Cmd Msg
 fetchCardLocations cards =
     let
         task =
@@ -294,38 +295,71 @@ viewTimeline page =
         , Element.spacing 50
         , Element.Region.mainContent
         ]
-        (List.indexedMap
-            (\i card ->
-                let
-                    content =
-                        viewCard
-                            [ cardAttr i ]
-                            card.title
-                            card.content
+        (List.map2 (\metadata info -> ( info, metadata )) page.cardMetadata cardInfo
+            |> List.indexedMap
+                (\i ( info, metadata ) ->
+                    let
+                        content =
+                            viewCard
+                                [ cardAttr i
+                                , hidden <| not metadata.shown
+                                ]
+                                page.device
+                                info
 
-                    even =
-                        modBy 2 i == 0
+                        even =
+                            modBy 2 i == 0
 
-                    rowElements =
-                        [ Element.el
-                            [ Element.width <| Element.fillPortion 6
-                            ]
-                            content
-                        , Element.el
-                            [ Element.width <| Element.fillPortion 4 ]
-                            Element.none
+                        rowElements =
+                            case page.device.class of
+                                Phone ->
+                                    [ Element.el
+                                        [ Element.width fill
+                                        ]
+                                        content
+                                    ]
+
+                                Tablet ->
+                                    [ Element.el
+                                        [ Element.width <| Element.fillPortion 6
+                                        ]
+                                        content
+                                    , Element.el
+                                        [ Element.width <| Element.fillPortion 4 ]
+                                        Element.none
+                                    ]
+
+                                Desktop ->
+                                    [ Element.el
+                                        [ Element.width <| Element.fillPortion 6
+                                        ]
+                                        content
+                                    , Element.el
+                                        [ Element.width <| Element.fillPortion 4 ]
+                                        Element.none
+                                    ]
+
+                                BigDesktop ->
+                                    [ Element.el
+                                        [ Element.width <| Element.fillPortion 6
+                                        ]
+                                        content
+                                    , Element.el
+                                        [ Element.width <| Element.fillPortion 4 ]
+                                        Element.none
+                                    ]
+                    in
+                    Element.row
+                        [ Element.padding 50
+                        , Element.width fill
                         ]
-                in
-                Element.row
-                    [ Element.padding 50 ]
-                    (if even then
-                        rowElements
+                        (if even then
+                            rowElements
 
-                     else
-                        List.reverse rowElements
-                    )
-            )
-            page.cards
+                         else
+                            List.reverse rowElements
+                        )
+                )
         )
 
 
@@ -336,8 +370,8 @@ viewTimeline page =
 -- TODO: if there isn't 30% of page left, render when you can
 
 
-viewCard : List (Attribute Msg) -> String -> List (Element Msg) -> Element Msg
-viewCard attrs title content =
+viewCard : List (Attribute Msg) -> Device -> CardInfo -> Element Msg
+viewCard attrs device info =
     let
         rounded =
             5
@@ -363,20 +397,35 @@ viewCard attrs title content =
                 [ Element.centerY
                 , Element.moveRight 30
                 ]
-                (Element.text title)
+                (Element.text info.title)
             )
         , Element.textColumn
             [ Element.padding 15
-            , Font.size 18
+            , Font.size <|
+                case device.class of
+                    Phone ->
+                        15
+
+                    _ ->
+                        18
             , Element.width fill
             , Element.spacing 20
             ]
-            content
+            (info.content device)
         ]
 
 
 viewHeader : IPage -> Element Msg
 viewHeader page =
+    let
+        spacing =
+            case page.device.class of
+                Phone ->
+                    10
+
+                _ ->
+                    35
+    in
     Element.row
         ([ Element.height <| px 75
          , Element.width fill
@@ -396,7 +445,7 @@ viewHeader page =
             [ Element.height fill
             , Element.alignRight
             , Element.moveLeft 40
-            , Element.spacing 35
+            , Element.spacing spacing
             ]
             [ Element.newTabLink
                 []
@@ -456,6 +505,11 @@ cardAttr i =
     Element.htmlAttribute <| Html.Attributes.id id
 
 
+hidden : Bool -> Attribute Msg
+hidden bool =
+    Element.htmlAttribute <| Html.Attributes.hidden bool
+
+
 
 {- Json -}
 
@@ -493,72 +547,136 @@ viewportDecoder =
 {- Content -}
 
 
+scaleImage : Int -> Int -> Int -> List (Attribute msg)
+scaleImage oWidth oHeight width =
+    let
+        ratio =
+            toFloat oWidth / toFloat oHeight
+
+        height =
+            floor <| toFloat width * ratio
+    in
+    [ Element.height <| px height
+    , Element.width <| px width
+    ]
+
+
 cardInfo : List CardInfo
 cardInfo =
-    [ { title = "FireLyte"
-      , content =
-            []
-      }
-    , { title = "IBM Canada"
-      , content =
-            []
-      }
-    , { title = "Nude Solutions"
-      , content =
+    [ CardInfo "FireLyte"
+        (\device ->
+            [ Element.paragraph
+                []
+                [ Element.text <|
+                    "2020 was the year that saw me launch my own company, CodeGolem Ltd."
+                        ++ " One of the reasons behind this decision was to start working on my own products, the first of which is FireLyte."
+                ]
+            , Element.image
+                (let
+                    scale =
+                        scaleImage 250 354
+
+                    attrs =
+                        case device.class of
+                            Phone ->
+                                scale 120
+
+                            _ ->
+                                scale 200
+                 in
+                 [ Element.alignRight ] ++ attrs
+                )
+                { src = "/camping.jpg"
+                , description = "Stock photo of camping"
+                }
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
+                        ++ " and couldn't help feeling technology could dramatically improve the experience, both for those already working in"
+                        ++ " the camping industry, and those that just love camping! What I have so far is built using Elixir/Phoenix, Elm and"
+                        ++ " Nix. If you're interested you can take a look at it "
+                ]
+            ]
+        )
+        [ "Nix"
+        , "Elm"
+        , "Elixir"
+        ]
+    , CardInfo "IBM Canada"
+        (\device ->
+            [ Element.paragraph
+                []
+                [ Element.text "Finish IBM pls" ]
+            ]
+        )
+        [ "DevOps"
+        , "Internship"
+        ]
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
-    , { title = "Nude Solutions"
-      , content =
+        )
+        []
+    , CardInfo "Nude Solutions"
+        (\device ->
             [ Element.paragraph
                 []
                 [ Element.text "Despite what the name might allude to, Nude Solutions is a tech company based in Calgary, Alberta. It's primary business is a software platform for insurance companies, brokers and customers. I have been working here for the past year and a half as a software developer, which has provided a lot of interesting opportunities. For example, I was recently able" ]
             ]
-      }
+        )
+        []
     ]
 
 
