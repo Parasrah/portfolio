@@ -55,10 +55,18 @@ type alias CardMetadata =
 -- info used to render card
 
 
+type alias ImageInfo =
+    { src : String
+    , description : String
+    , ratio : Float
+    }
+
+
 type alias CardInfo =
     { title : String
-    , content : Device -> List (Element Msg)
+    , content : List (Element Msg)
     , tags : List String
+    , desktopImage : ImageInfo
     }
 
 
@@ -126,8 +134,8 @@ init flagsJson url key =
 
                 cardMetadata =
                     List.map
-                        (\c -> CardMetadata True Nothing)
-                        cardInfo
+                        (\c -> CardMetadata False Nothing)
+                        (cardInfo device)
             in
             ( Page
                 { key = key
@@ -218,7 +226,10 @@ update msg model =
             ( model, Cmd.none )
 
 
+
 -- TODO: should I delay this slightly to ensure rendering happens first?
+
+
 fetchCardLocations : List cards -> Cmd Msg
 fetchCardLocations cards =
     let
@@ -305,7 +316,21 @@ viewPage : IPage -> Element Msg
 viewPage page =
     Element.column
         [ Element.paddingEach
-            { top = headerHeight page.device.class + 20
+            { top =
+                headerHeight page.device.class
+                    + (case page.device.class of
+                        Phone ->
+                            30
+
+                        Tablet ->
+                            30
+
+                        Desktop ->
+                            40
+
+                        BigDesktop ->
+                            80
+                      )
             , bottom = 0
             , left = 0
             , right = 0
@@ -350,14 +375,13 @@ viewTimeline page =
                     100
         , Region.mainContent
         ]
-        (List.map2 (\metadata info -> ( info, metadata )) page.cardMetadata cardInfo
+        (List.map2 (\metadata info -> ( info, metadata )) page.cardMetadata (cardInfo page.device)
             |> List.indexedMap
                 (\i ( info, metadata ) ->
                     let
                         content =
                             viewCard
                                 [ cardAttr i
-                                , hidden <| not metadata.shown
                                 ]
                                 page.device
                                 info
@@ -366,6 +390,10 @@ viewTimeline page =
                             modBy 2 i == 0
 
                         rowElements =
+                            let
+                                { desktopImage } =
+                                    info
+                            in
                             case page.device.class of
                                 Phone ->
                                     [ Element.el
@@ -375,37 +403,81 @@ viewTimeline page =
                                     ]
 
                                 Tablet ->
+                                    let
+                                        ( imageWidth, imageHeight ) =
+                                            calculateImageDimensions ( 200, 200 ) desktopImage.ratio
+                                    in
                                     [ Element.el
                                         [ Element.width <| Element.fillPortion 6
                                         ]
                                         content
                                     , Element.el
-                                        [ Element.width <| Element.fillPortion 4 ]
-                                        Element.none
+                                        [ Element.width <| Element.fillPortion 4
+                                        , Element.centerX
+                                        , Element.centerY
+                                        ]
+                                        (Element.image
+                                            [ Element.height <| px imageHeight
+                                            , Element.width <| px imageWidth
+                                            , Element.centerX
+                                            ]
+                                            { src = desktopImage.src
+                                            , description = desktopImage.description
+                                            }
+                                        )
                                     ]
 
                                 Desktop ->
+                                    let
+                                        ( imageWidth, imageHeight ) =
+                                            calculateImageDimensions ( 400, 300 ) desktopImage.ratio
+                                    in
                                     [ Element.el
                                         [ Element.width <| Element.fillPortion 6
                                         ]
                                         content
                                     , Element.el
-                                        [ Element.width <| Element.fillPortion 4 ]
-                                        Element.none
+                                        [ Element.width <| Element.fillPortion 4
+                                        , Element.centerX
+                                        , Element.centerY
+                                        ]
+                                        (Element.image
+                                            [ Element.height <| px imageHeight
+                                            , Element.width <| px imageWidth
+                                            , Element.centerX
+                                            ]
+                                            { src = desktopImage.src
+                                            , description = desktopImage.description
+                                            }
+                                        )
                                     ]
 
                                 BigDesktop ->
+                                    let
+                                        ( imageWidth, imageHeight ) =
+                                            calculateImageDimensions ( 500, 300 ) desktopImage.ratio
+                                    in
                                     [ Element.el
                                         [ Element.width <| Element.fillPortion 6
                                         ]
                                         content
                                     , Element.el
-                                        [ Element.width <| Element.fillPortion 4 ]
-                                        Element.none
+                                        [ Element.width <| Element.fillPortion 4
+                                        ]
+                                        (Element.image
+                                            [ Element.height <| px imageHeight
+                                            , Element.width <| px imageWidth
+                                            , Element.centerX
+                                            ]
+                                            { src = desktopImage.src
+                                            , description = desktopImage.description
+                                            }
+                                        )
                                     ]
                     in
                     Element.row
                         [ Element.width fill
+                        , hidden <| not metadata.shown
                         ]
                         (if even then
                             rowElements
@@ -417,8 +489,26 @@ viewTimeline page =
         )
 
 
+calculateImageDimensions : ( Int, Int ) -> Float -> ( Int, Int )
+calculateImageDimensions ( maxWidth, maxHeight ) ratio =
+    -- ratio = width / height
+    -- ratio * height = width / height * height
+    -- ratio * height = width
+    -- ratio / width = width / height / width
+    -- ratio / width = 1 / height
+    -- width / ratio = height
+    let
+        widthWithMaxHeight =
+            ratio * toFloat maxHeight
+    in
+    if widthWithMaxHeight > toFloat maxWidth then
+        ( maxWidth, floor (toFloat maxWidth / ratio) )
 
--- TODO: want to have tags on each card
+    else
+        ( floor widthWithMaxHeight, maxHeight )
+
+
+
 -- TODO: make card slightly larger when hovered (animate)
 -- TODO: render cards when they are scrolled 30% into page
 -- TODO: if there isn't 30% of page left, render when you can
@@ -454,6 +544,20 @@ viewCard attrs device info =
 
                 BigDesktop ->
                     25
+
+        cardFontSize =
+            case device.class of
+                Phone ->
+                    15
+
+                Tablet ->
+                    18
+
+                Desktop ->
+                    20
+
+                BigDesktop ->
+                    22
     in
     Element.column
         ([ Background.color Style.Colors.dp01
@@ -487,24 +591,12 @@ viewCard attrs device info =
                         20
 
                     _ ->
-                        15
-            , Font.size <|
-                case device.class of
-                    Phone ->
-                        15
-
-                    Tablet ->
-                        18
-
-                    Desktop ->
-                        18
-
-                    BigDesktop ->
-                        22
+                        25
+            , Font.size cardFontSize
             , Element.width fill
             , Element.spacing 20
             ]
-            (info.content device)
+            info.content
          ]
             ++ (if List.isEmpty info.tags then
                     []
@@ -542,7 +634,16 @@ viewCard attrs device info =
                                             _ ->
                                                 15
                                     , Border.solid
-                                    , Border.width 1
+                                    , Border.width <|
+                                        case device.class of
+                                            Desktop ->
+                                                2
+
+                                            BigDesktop ->
+                                                2
+
+                                            _ ->
+                                                1
                                     , Border.rounded 15
                                     , Border.color Style.Colors.secondaryFont
                                     , Font.color Style.Colors.secondaryFont
@@ -709,124 +810,165 @@ scaleImage oWidth oHeight width =
     ]
 
 
-cardInfo : List CardInfo
-cardInfo =
+cardInfo : Device -> List CardInfo
+cardInfo device =
     [ CardInfo "Nude Solutions"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.newTabLink
-                    [ Font.underline ]
-                    { url = "https://www.nudesolutions.com/"
-                    , label = Element.text "Nude Solutions"
-                    }
-                , Element.text <|
-                    " is a software company focused on building a modern software platform to improve"
-                        ++ " the insurance industry for all participants, be it insurance companies, brokers or the customers"
-                        ++ " themselves"
-                ]
-            , Element.paragraph
-                []
-                [ Element.text <|
-                    "I have been working at Nude Solutions since 2019, where I've been working on a new"
-                        ++ " project that would simplify the process of offering insurance products on our platform."
-                        ++ " As part of this I spear-headed development on an in-house interpreter called SimpleCode"
-                        ++ " so our customers can convey complicated business logic without needing to learn a full"
-                        ++ " fledged programming language."
-                ]
-            , Element.paragraph
-                []
-                [ Element.text <|
-                    "In addition, I've been very involved with the move to .NET Core, Linux support, Docker adoption and the"
-                        ++ " use of Azure App Services by the company. I also recently gave a company-wide presentation"
-                        ++ " on advanced techniques in Typescript."
-                ]
+        [ Element.paragraph
+            []
+            [ Element.newTabLink
+                [ Font.underline ]
+                { url = "https://www.nudesolutions.com/"
+                , label = Element.text "Nude Solutions"
+                }
+            , Element.text <|
+                " is a software company focused on building a modern software platform to improve"
+                    ++ " the insurance industry for all participants, be it insurance companies, brokers or the customers"
+                    ++ " themselves"
             ]
-        )
+        , Element.paragraph
+            []
+            [ Element.text <|
+                "I have been working at Nude Solutions since 2019, where I've been working on a new"
+                    ++ " project that would simplify the process of offering insurance products on our platform."
+                    ++ " As part of this I spear-headed development on an in-house interpreter called SimpleCode"
+                    ++ " so our customers can convey complicated business logic without needing to learn a full"
+                    ++ " fledged programming language."
+            ]
+        , Element.paragraph
+            []
+            [ Element.text <|
+                "In addition, I've been very involved with the move to .NET Core, Linux support, Docker adoption and the"
+                    ++ " use of Azure App Services by the company. I also recently gave a company-wide presentation"
+                    ++ " on advanced techniques in Typescript."
+            ]
+        ]
         [ ".NET"
         , "React"
-        , "Typescript"
         , "Azure"
+        , "Remote"
         ]
+        { src = "/nudelogo.svg"
+        , description = "Nude Solutions logo"
+        , ratio = 773.23 / 252.68
+        }
     , CardInfo "FireLyte"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text <|
-                    "2020 was the year that saw me launch my own company, CodeGolem Ltd."
-                        ++ " One of the reasons behind this decision was to start working on my own products, the first of which is FireLyte."
-                ]
-            , Element.image
-                (let
-                    scale =
-                        scaleImage 250 354
-
-                    attrs =
-                        case device.class of
-                            Phone ->
-                                scale 120
-
-                            _ ->
-                                scale 200
-                 in
-                 [ Element.alignRight ] ++ attrs
-                )
-                { src = "/camping.jpg"
-                , description = "Stock photo of camping"
-                }
-            , Element.paragraph
-                []
-                [ Element.text <|
-                    " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
-                        ++ " and couldn't help feeling technology would dramatically improve the experience, both for those already working in"
-                        ++ " the camping industry, and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
-                        ++ " Nix. If you're interested you can take a look at the source "
-                , Element.newTabLink
-                    [ Font.underline ]
-                    { url = "https://github.com/code-golem/campground"
-                    , label = Element.text "here"
-                    }
-                , Element.text "!"
-                ]
+        [ Element.paragraph
+            []
+            [ Element.text <|
+                "2020 was the year that saw me launch my own company, CodeGolem Ltd."
+                    ++ " One of the reasons behind this decision was to start working on my own products, the first of which is FireLyte."
             ]
-        )
+        , Element.image
+            (let
+                scale =
+                    scaleImage 250 354
+
+                attrs =
+                    case device.class of
+                        Phone ->
+                            scale 120
+
+                        Tablet ->
+                            scale 150
+
+                        _ ->
+                            scale 200
+             in
+             [ Element.alignRight
+             , Border.rounded 5
+             , Element.clip
+             ]
+                ++ attrs
+            )
+            { src = "/camping.jpg"
+            , description = "Stock photo of camping"
+            }
+        , Element.paragraph
+            []
+            [ Element.text <|
+                " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
+                    ++ " and couldn't help feeling technology would dramatically improve the experience; Both for those already working in"
+                    ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
+                    ++ " Nix. If you're interested you can take a look at the source "
+            , Element.newTabLink
+                [ Font.underline ]
+                { url = "https://github.com/code-golem/campground"
+                , label = Element.text "here"
+                }
+            , Element.text "!"
+            ]
+        ]
         [ "Nix"
         , "Elm"
         , "Elixir"
+        , "Multi-Tenant"
         ]
+        { src = "/code-golem.svg"
+        , description = "Icon used for the CodeGolem github repo"
+        , ratio = 1
+        }
     , CardInfo "Private Internet Access"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Finish PIA pls" ]
+        [ Element.paragraph
+            []
+            [ Element.text <|
+                "Private Internet Access is a remote-first company that provides a VPN"
+                    ++ " service to improve the privacy and security of their customers."
+                    ++ " I started working here in 2018, and was responsible for working"
+                    ++ " on their Chrome & Firefox web extensions."
             ]
-        )
+        , Element.paragraph
+            []
+            [ Element.text <|
+                "As someone who cares deeply about privacy, this was somewhat of a dream"
+                    ++ " job for me coming out of school. I got to work with some very"
+                    ++ " talented individuals and experience working on a global product."
+                    ++ " This was my first time working on something so many people already"
+                    ++ " relied on day to day, which really forced me to change the way I"
+                    ++ " thought about development."
+            ]
+        , Element.paragraph
+            []
+            [ Element.text <|
+                "Unfortunately, due to some ethical issues I had with the companies changing vision,"
+                    ++ " I ended up resigning after only a year in 2019 and taking the summer to"
+                    ++ " work on a blogging platform (currently unfinished) before starting at Nude Solutions"
+            ]
+        ]
         [ "Privacy"
         , "React"
-        , "WebExtensions"
+        , "Web Extensions"
+        , "Remote"
         ]
+        { src = "/pia.png"
+        , description = "Private Internet Access icon"
+        , ratio = 1
+        }
     , CardInfo "Ease"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Finish Ease pls" ]
-            ]
-        )
+        [ Element.paragraph
+            []
+            [ Element.text "Finish Ease pls" ]
+        ]
         [ "P2P"
         , "React"
         , "Redux"
         ]
+        { src = ""
+        , description = ""
+        , ratio = 0
+        }
     , CardInfo "IBM Canada"
-        (\device ->
-            [ Element.paragraph
-                []
-                [ Element.text "Finish IBM pls" ]
-            ]
-        )
+        [ Element.paragraph
+            []
+            [ Element.text "Finish IBM pls" ]
+        ]
         [ "DevOps"
         , "Internship"
         , "Selenium"
         ]
+        { src = ""
+        , description = ""
+        , ratio = 0
+        }
     ]
 
 
