@@ -8,8 +8,10 @@ This is the repository for my personal web portfolio.
 
 Where normally I would build something this insignificant in plain javascript, html and css, I have instead opted to use Elm to highlight this being a technology I am comfortable with.
 
+Aside from Elm, the only other package (at time of writing) being used is [animate.css](https://animate.style/), a popular css library.
+
 ## Deployment
 
 While you may notice this repo has been integrated with Netlify for CI & automated deploys, the domain `https://parasrah.com` is not pointing at one of Netlify's servers. This is
-because I am purely using it for CI for validation and previews, and the "production" instance is hosted using NixOps. You will only find the logical configuration (`/logical.nix`)
+because I am purely using it for CI validation and previews, and the "production" instance is hosted using NixOps. You will only find the logical configuration (`/logical.nix`)
 in this repo, as this is currently being combined with one of my other deployment configurations.
