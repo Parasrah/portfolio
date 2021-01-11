@@ -25,6 +25,100 @@ import Url exposing (Url)
 
 
 
+{- Config -}
+
+
+type alias Config =
+    { pagePaddingTop : Int
+    , timelinePaddingX : Int
+    , timelineSpacing : Int
+    , headerFooterHeight : Int
+    , cardHeaderFontSize : Int
+    , cardFontSize : Int
+    , tagSpacing : Int
+    , tagBorderWidth : Int
+    , cardContentPadding : Int
+    , iconSize : Int
+    , cardHeaderPaddingX : Int
+    , headerFontSize : Int
+    , headerHeight : Int
+    , headerIconSpacing : Int
+    }
+
+
+config : Device -> Config
+config device =
+    case device.class of
+        Phone ->
+            { pagePaddingTop = 30
+            , timelinePaddingX = 30
+            , timelineSpacing = 50
+            , headerFooterHeight = 50
+            , cardHeaderFontSize = 18
+            , cardFontSize = 15
+            , tagSpacing = 12
+            , tagBorderWidth = 1
+            , cardContentPadding = 20
+            , iconSize = 20
+            , cardHeaderPaddingX = 20
+            , headerFontSize = 24
+            , headerHeight = 75
+            , headerIconSpacing = 15
+            }
+
+        Tablet ->
+            { pagePaddingTop = 30
+            , timelinePaddingX = 50
+            , timelineSpacing = 70
+            , headerFooterHeight = 60
+            , cardHeaderFontSize = 20
+            , cardFontSize = 18
+            , tagSpacing = 15
+            , tagBorderWidth = 1
+            , cardContentPadding = 25
+            , iconSize = 24
+            , cardHeaderPaddingX = 30
+            , headerFontSize = 30
+            , headerHeight = 75
+            , headerIconSpacing = 30
+            }
+
+        Desktop ->
+            { pagePaddingTop = 40
+            , timelinePaddingX = 50
+            , timelineSpacing = 75
+            , headerFooterHeight = 60
+            , cardHeaderFontSize = 20
+            , cardFontSize = 20
+            , tagSpacing = 15
+            , tagBorderWidth = 2
+            , cardContentPadding = 25
+            , iconSize = 24
+            , cardHeaderPaddingX = 30
+            , headerFontSize = 30
+            , headerHeight = 75
+            , headerIconSpacing = 30
+            }
+
+        BigDesktop ->
+            { pagePaddingTop = 80
+            , timelinePaddingX = 60
+            , timelineSpacing = 100
+            , headerFooterHeight = 70
+            , cardHeaderFontSize = 25
+            , cardFontSize = 22
+            , tagSpacing = 15
+            , tagBorderWidth = 2
+            , cardContentPadding = 25
+            , iconSize = 24
+            , cardHeaderPaddingX = 30
+            , headerFontSize = 30
+            , headerHeight = 75
+            , headerIconSpacing = 30
+            }
+
+
+
 {- Model -}
 
 
@@ -423,20 +517,8 @@ viewPage page =
     Element.column
         [ Element.paddingEach
             { top =
-                headerHeight page.device.class
-                    + (case page.device.class of
-                        Phone ->
-                            30
-
-                        Tablet ->
-                            30
-
-                        Desktop ->
-                            40
-
-                        BigDesktop ->
-                            80
-                      )
+                (config page.device |> .headerHeight)
+                    + (config page.device |> .pagePaddingTop)
             , bottom = 0
             , left = 0
             , right = 0
@@ -453,18 +535,7 @@ viewTimeline page =
         , Element.width fill
         , let
             paddingX =
-                case page.device.class of
-                    Phone ->
-                        30
-
-                    Tablet ->
-                        50
-
-                    Desktop ->
-                        50
-
-                    BigDesktop ->
-                        60
+                config page.device |> .timelinePaddingX
           in
           Element.paddingEach
             { top = 0
@@ -472,19 +543,7 @@ viewTimeline page =
             , right = paddingX
             , bottom = 100
             }
-        , Element.spacing <|
-            case page.device.class of
-                Phone ->
-                    50
-
-                Tablet ->
-                    70
-
-                Desktop ->
-                    50
-
-                BigDesktop ->
-                    100
+        , Element.spacing (config page.device |> .timelineSpacing)
         , Region.mainContent
         ]
         (Animator.current page.cards
@@ -697,43 +756,13 @@ viewCard device dimensions cards i =
             5
 
         headerFooterHeight =
-            case device.class of
-                Phone ->
-                    50
-
-                BigDesktop ->
-                    70
-
-                _ ->
-                    60
+            config device |> .headerFooterHeight
 
         headerFontSize =
-            case device.class of
-                Phone ->
-                    20
-
-                Tablet ->
-                    20
-
-                Desktop ->
-                    20
-
-                BigDesktop ->
-                    25
+            config device |> .cardHeaderFontSize
 
         cardFontSize =
-            case device.class of
-                Phone ->
-                    15
-
-                Tablet ->
-                    18
-
-                Desktop ->
-                    20
-
-                BigDesktop ->
-                    22
+            config device |> .cardFontSize
     in
     Element.column
         ([ Background.color Style.Colors.dp01
@@ -790,20 +819,14 @@ viewCard device dimensions cards i =
             ]
             (Element.el
                 [ Element.centerY
-                , Element.paddingXY 30 0
+                , Element.paddingXY (config device |> .cardHeaderPaddingX) 0
                 , Font.size headerFontSize
                 , Region.heading 2
                 ]
                 (Element.text info.title)
             )
          , Element.textColumn
-            [ Element.padding <|
-                case device.class of
-                    Phone ->
-                        20
-
-                    _ ->
-                        25
+            [ Element.padding (config device |> .cardContentPadding)
             , Font.size cardFontSize
             , Element.width fill
             , Element.spacing 20
@@ -838,24 +861,9 @@ viewCard device dimensions cards i =
                         (List.map
                             (\tag ->
                                 Element.el
-                                    [ Font.size <|
-                                        case device.class of
-                                            Phone ->
-                                                12
-
-                                            _ ->
-                                                15
+                                    [ Font.size (config device |> .tagSpacing)
                                     , Border.solid
-                                    , Border.width <|
-                                        case device.class of
-                                            Desktop ->
-                                                2
-
-                                            BigDesktop ->
-                                                2
-
-                                            _ ->
-                                                1
+                                    , Border.width (config device |> .tagBorderWidth)
                                     , Border.rounded 15
                                     , Border.color Style.Colors.secondaryFont
                                     , Font.color Style.Colors.secondaryFont
@@ -886,24 +894,10 @@ isVisible state =
             True
 
 
-headerHeight : DeviceClass -> Int
-headerHeight class =
-    75
-
-
 viewHeader : IPage -> Element Msg
 viewHeader page =
-    let
-        ( spacing, titleFont ) =
-            case page.device.class of
-                Phone ->
-                    ( 15, 25 )
-
-                _ ->
-                    ( 35, 30 )
-    in
     Element.row
-        ([ Element.height <| px <| headerHeight page.device.class
+        ([ Element.height <| px <| (config page.device |> .headerHeight)
          , Element.width fill
          , Region.navigation
          , Background.color Style.Colors.background
@@ -913,7 +907,7 @@ viewHeader page =
         [ Element.link
             [ Region.heading 1
             , Element.moveRight 30
-            , Font.size titleFont
+            , Font.size (config page.device |> .headerFontSize)
             ]
             { url = "/"
             , label = Element.text "Brad Pfannmuller"
@@ -922,14 +916,30 @@ viewHeader page =
             [ Element.height fill
             , Element.alignRight
             , Element.moveLeft 40
-            , Element.spacing spacing
+            , Element.spacing (config page.device |> .headerIconSpacing)
             ]
             [ Element.newTabLink
+                []
+                { url = "https://github.com/parasrah/portfolio"
+                , label =
+                    Element.image
+                        [ Element.alignRight
+                        , Element.width <| px (config page.device |> .iconSize)
+                        , Element.height <| px (config page.device |> .iconSize)
+                        ]
+                        { src = "/code.svg"
+                        , description = "Source code for this website"
+                        }
+                }
+            , Element.newTabLink
                 []
                 { url = "https://github.com/parasrah"
                 , label =
                     Element.image
-                        [ Element.alignRight ]
+                        [ Element.alignRight
+                        , Element.width <| px (config page.device |> .iconSize)
+                        , Element.height <| px (config page.device |> .iconSize)
+                        ]
                         { src = "/github.svg"
                         , description = "Github, where I host most of my code"
                         }
@@ -939,7 +949,10 @@ viewHeader page =
                 { url = "https://www.linkedin.com/in/brad-pfannmuller/"
                 , label =
                     Element.image
-                        [ Element.alignRight ]
+                        [ Element.alignRight
+                        , Element.width <| px (config page.device |> .iconSize)
+                        , Element.height <| px (config page.device |> .iconSize)
+                        ]
                         { src = "/linkedin.svg"
                         , description = "LinkedIn, the popular career platform"
                         }
@@ -949,7 +962,10 @@ viewHeader page =
                 { url = "mailto:jobs@parasrah.com"
                 , label =
                     Element.image
-                        [ Element.alignRight ]
+                        [ Element.alignRight
+                        , Element.width <| px (config page.device |> .iconSize)
+                        , Element.height <| px (config page.device |> .iconSize)
+                        ]
                         { src = "/mail.svg"
                         , description = "Send me an email!"
                         }
@@ -1184,24 +1200,23 @@ cardInfo =
             , ratio = 1
             }
     , \device ->
-        CardInfo "Ease"
-            [ Element.paragraph
-                []
-                [ Element.text "Finish Ease pls" ]
-            ]
-            [ "P2P"
-            , "React"
-            , "Redux"
-            ]
-            { src = "/ease.png"
-            , description = "Screenshot of Ease video player"
-            , ratio = 500 / 226
-            }
-    , \device ->
         CardInfo "IBM Canada"
             [ Element.paragraph
                 []
-                [ Element.text "Finish IBM pls" ]
+                [ Element.text <|
+                    "In 2016, I had my first industry experience working at IBM Canada on a 12 month long internship. Despite my title being"
+                        ++ " \"Responsive Web & Java Developer\", it mostly involved me managing our internal CI servers, and"
+                        ++ " writing Selenium UI tests (and lots of meetings)."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "More interesting was my participation in the Future Blue team, a small group of interns"
+                        ++ " voted into positions to support the other interns that year. After being part of the Future Blue"
+                        ++ " Web Team for a few months, I was elected to be one of the two leaders. This involved us running"
+                        ++ " weekly sessions for the members to plan and work on projects, planning the yearly Web Hackathon"
+                        ++ " and volunteer for events such as \"Take your kids to work\" day."
+                ]
             ]
             [ "DevOps"
             , "Internship"
@@ -1210,6 +1225,39 @@ cardInfo =
             { src = "/IBM_logo.svg"
             , description = "IBM's logo"
             , ratio = 1000 / 400
+            }
+    , \device ->
+        CardInfo "Ease"
+            [ Element.paragraph
+                []
+                [ Element.text <|
+                    "During my internship at IBM, I began working on a project in my free time. At the time I was doing"
+                        ++ " long distance with my girlfriend, and "
+                , Element.newTabLink
+                    [ Font.underline ]
+                    { url = "https://github.com/parasrah/ease"
+                    , label = Element.text "Ease"
+                    }
+                , Element.text <|
+                    " was an Electron app that let me stream movies to her with shared controls. I achieved this using"
+                        ++ " WebRTC to prevent needing to run anything beyond a small signal server."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "Beyond this being my first serious project leading me to learn technologies like React, Webpack"
+                        ++ " and just Javascript in general (thank you Kyle Simpson), this was also the project that sparked my love for"
+                        ++ " software. Since this point, I've consistently been working on various projects in my free time. Although"
+                        ++ " many of them are still unfinished, each and every one has taught me something invaluable along the way."
+                ]
+            ]
+            [ "P2P"
+            , "React"
+            , "Redux"
+            ]
+            { src = "/ease.png"
+            , description = "Screenshot of Ease video player"
+            , ratio = 500 / 226
             }
     ]
 
