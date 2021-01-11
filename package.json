@@ -26,9 +26,7 @@
     "url": "https://github.com/Parasrah/portfolio/issues"
   },
   "homepage": "https://github.com/Parasrah/portfolio#readme",
-  "dependencies": {
-    "animate.css": "^4.1.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "copy-webpack-plugin": "^6.0.3",
     "css-loader": "^5.0.1",

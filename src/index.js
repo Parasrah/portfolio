@@ -1,7 +1,5 @@
 import { Elm } from './Main.elm'
 
-import 'animate.css'
-
 window.addEventListener('load', () => {
   const app = Elm.Main.init({
     node: document.getElementsByTagName('body')[0],
