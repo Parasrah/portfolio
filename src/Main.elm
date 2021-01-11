@@ -919,20 +919,8 @@ viewHeader page =
             , Element.spacing (config page.device |> .headerIconSpacing)
             ]
             [ Element.newTabLink
-                []
-                { url = "https://github.com/parasrah/portfolio"
-                , label =
-                    Element.image
-                        [ Element.alignRight
-                        , Element.width <| px (config page.device |> .iconSize)
-                        , Element.height <| px (config page.device |> .iconSize)
-                        ]
-                        { src = "/code.svg"
-                        , description = "Source code for this website"
-                        }
-                }
-            , Element.newTabLink
-                []
+                [ Region.description "My github account"
+                ]
                 { url = "https://github.com/parasrah"
                 , label =
                     Element.image
@@ -945,7 +933,8 @@ viewHeader page =
                         }
                 }
             , Element.newTabLink
-                []
+                [ Region.description "My LinkedIn account"
+                ]
                 { url = "https://www.linkedin.com/in/brad-pfannmuller/"
                 , label =
                     Element.image
@@ -958,7 +947,8 @@ viewHeader page =
                         }
                 }
             , Element.link
-                []
+                [ Region.description "My email"
+                ]
                 { url = "mailto:jobs@parasrah.com"
                 , label =
                     Element.image
@@ -968,6 +958,20 @@ viewHeader page =
                         ]
                         { src = "/mail.svg"
                         , description = "Send me an email!"
+                        }
+                }
+            , Element.newTabLink
+                [ Region.description "Source code for my portfolio"
+                ]
+                { url = "https://github.com/parasrah/portfolio"
+                , label =
+                    Element.image
+                        [ Element.alignRight
+                        , Element.width <| px (config page.device |> .iconSize)
+                        , Element.height <| px (config page.device |> .iconSize)
+                        ]
+                        { src = "/code.svg"
+                        , description = "Source code for this website"
                         }
                 }
             ]
@@ -1146,7 +1150,9 @@ cardInfo =
                         ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
                         ++ " Nix. If you're interested you can take a look at the source "
                 , Element.newTabLink
-                    [ Font.underline ]
+                    [ Font.underline
+                    , Region.description "Source code of FireLyte"
+                    ]
                     { url = "https://github.com/code-golem/campground"
                     , label = Element.text "here"
                     }
@@ -1234,7 +1240,9 @@ cardInfo =
                     "During my internship at IBM, I began working on a project in my free time. At the time I was doing"
                         ++ " long distance with my girlfriend, and "
                 , Element.newTabLink
-                    [ Font.underline ]
+                    [ Font.underline
+                    , Region.description "Ease source code"
+                    ]
                     { url = "https://github.com/parasrah/ease"
                     , label = Element.text "Ease"
                     }
