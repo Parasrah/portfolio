@@ -1,5 +1,7 @@
 port module Main exposing (main)
 
+import Animator exposing (Animator)
+import Animator.Inline
 import Browser exposing (Document, UrlRequest)
 import Browser.Dom exposing (Error(..))
 import Browser.Events
@@ -7,14 +9,17 @@ import Browser.Navigation exposing (Key)
 import Element exposing (Attribute, Color, Device, DeviceClass(..), Element, fill, layout, px, text)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
 import Html.Attributes
 import Json.Decode as D exposing (Decoder, Value, int)
 import Json.Decode.Pipeline exposing (required)
+import List.Extra
 import Style.Colors
 import Style.Fonts
 import Task
+import Time
 import Url exposing (Url)
 
 
@@ -32,41 +37,12 @@ type alias IPage =
     { key : Key
     , dimensions : Dimensions
     , device : Device
-    , cardMetadata : List CardMetadata
+    , cards : Animator.Timeline (List Card)
     }
 
 
 type alias Flags =
     { dimensions : Dimensions
-    }
-
-
-
--- will be stored in model
-
-
-type alias CardMetadata =
-    { shown : Bool
-    , top : Maybe Int
-    }
-
-
-
--- info used to render card
-
-
-type alias ImageInfo =
-    { src : String
-    , description : String
-    , ratio : Float
-    }
-
-
-type alias CardInfo =
-    { title : String
-    , content : List (Element Msg)
-    , tags : List String
-    , desktopImage : ImageInfo
     }
 
 
@@ -90,6 +66,41 @@ type alias Viewport =
     }
 
 
+type alias Card =
+    { shown : Bool
+    , hovered : Bool
+    , top : Maybe Int
+    , render : Device -> CardInfo
+    }
+
+
+type alias ImageInfo =
+    { src : String
+    , description : String
+    , ratio : Float
+    }
+
+
+type alias CardInfo =
+    { title : String
+    , content : List (Element Msg)
+    , tags : List String
+    , desktopImage : ImageInfo
+    }
+
+
+
+{- Animations -}
+
+
+pageAnimator : Animator IPage
+pageAnimator =
+    Animator.animator
+        |> Animator.watching
+            .cards
+            (\newCards model -> { model | cards = newCards })
+
+
 
 {- Message -}
 
@@ -102,6 +113,8 @@ type Msg
     | OnScroll
     | OnCardLocations (Result Browser.Dom.Error (List Browser.Dom.Element))
     | ReadMore Int
+    | Tick Time.Posix
+    | CardHover Int Bool
 
 
 
@@ -134,14 +147,17 @@ init flagsJson url key =
 
                 cardMetadata =
                     List.map
-                        (\c -> CardMetadata False Nothing)
-                        (cardInfo device)
+                        (\c -> Card False False Nothing c)
+                        cardInfo
+
+                animatedCards =
+                    Animator.init cardMetadata
             in
             ( Page
                 { key = key
                 , device = device
                 , dimensions = flags.dimensions
-                , cardMetadata = cardMetadata
+                , cards = animatedCards
                 }
             , fetchCardLocations cardMetadata
             )
@@ -190,7 +206,7 @@ update msg model =
                 OnResize ->
                     ( model
                     , Cmd.batch
-                        [ fetchCardLocations page.cardMetadata
+                        [ fetchCardLocations <| Animator.current page.cards
                         , Task.perform OnDimensions Browser.Dom.getViewport
                         ]
                     )
@@ -211,16 +227,43 @@ update msg model =
                                         (\card location ->
                                             { card | top = Just <| ceiling location.element.y }
                                         )
-                                        page.cardMetadata
+                                        (Animator.current page.cards)
                                         locations
                             in
-                            ( Page { page | cardMetadata = cardMetadata }, Cmd.none )
+                            ( Page
+                                { page
+                                    | cards = Animator.go Animator.immediately cardMetadata page.cards
+                                }
+                            , Cmd.none
+                            )
 
                         Err err ->
                             ( DomError err, Cmd.none )
 
                 ReadMore index ->
-                    ( model, fetchCardLocations page.cardMetadata )
+                    ( model, fetchCardLocations <| Animator.current page.cards )
+
+                Tick newTime ->
+                    ( Page <| Animator.update newTime pageAnimator page, Cmd.none )
+
+                CardHover i isHovered ->
+                    let
+                        cardMetadata =
+                            Animator.current page.cards
+                    in
+                    case List.Extra.getAt i cardMetadata of
+                        Just card ->
+                            let
+                                newCard =
+                                    { card | hovered = isHovered }
+
+                                newCards =
+                                    List.Extra.setAt i newCard cardMetadata
+                            in
+                            ( Page { page | cards = Animator.go Animator.slowly newCards page.cards }, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -254,11 +297,17 @@ fetchCardLocations cards =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ Browser.Events.onResize (\_ _ -> OnResize)
-        , onScroll (\_ -> OnScroll)
-        ]
+subscriptions model =
+    case model of
+        Page page ->
+            Sub.batch
+                [ Browser.Events.onResize (\_ _ -> OnResize)
+                , onScroll (\_ -> OnScroll)
+                , Animator.toSubscription Tick page pageAnimator
+                ]
+
+        _ ->
+            Sub.none
 
 
 
@@ -375,13 +424,18 @@ viewTimeline page =
                     100
         , Region.mainContent
         ]
-        (List.map2 (\metadata info -> ( info, metadata )) page.cardMetadata (cardInfo page.device)
+        (Animator.current page.cards
             |> List.indexedMap
-                (\i ( info, metadata ) ->
+                (\i card ->
                     let
+                        info =
+                            card.render page.device
+
                         content =
                             viewCard
                                 [ cardAttr i
+                                , Events.onMouseEnter <| CardHover i True
+                                , Events.onMouseLeave <| CardHover i False
                                 ]
                                 page.device
                                 info
@@ -477,7 +531,10 @@ viewTimeline page =
                     in
                     Element.row
                         [ Element.width fill
-                        , hidden <| not metadata.shown
+                        , card
+                            |> .shown
+                            |> not
+                            |> hidden
                         ]
                         (if even then
                             rowElements
@@ -810,165 +867,170 @@ scaleImage oWidth oHeight width =
     ]
 
 
-cardInfo : Device -> List CardInfo
-cardInfo device =
-    [ CardInfo "Nude Solutions"
-        [ Element.paragraph
-            []
-            [ Element.newTabLink
-                [ Font.underline ]
-                { url = "https://www.nudesolutions.com/"
-                , label = Element.text "Nude Solutions"
-                }
-            , Element.text <|
-                " is a software company focused on building a modern software platform to improve"
-                    ++ " the insurance industry for all participants, be it insurance companies, brokers or the customers"
-                    ++ " themselves"
+cardInfo : List (Device -> CardInfo)
+cardInfo =
+    [ \device ->
+        CardInfo "Nude Solutions"
+            [ Element.paragraph
+                []
+                [ Element.newTabLink
+                    [ Font.underline ]
+                    { url = "https://www.nudesolutions.com/"
+                    , label = Element.text "Nude Solutions"
+                    }
+                , Element.text <|
+                    " is a software company focused on building a modern software platform to improve"
+                        ++ " the insurance industry for all participants, be it insurance companies, brokers or the customers"
+                        ++ " themselves"
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "I have been working at Nude Solutions since 2019, where I've been working on a new"
+                        ++ " project that would simplify the process of offering insurance products on our platform."
+                        ++ " As part of this I spear-headed development on an in-house interpreter called SimpleCode"
+                        ++ " so our customers can convey complicated business logic without needing to learn a full"
+                        ++ " fledged programming language."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "In addition, I've been very involved with the move to .NET Core, Linux support, Docker adoption and the"
+                        ++ " use of Azure App Services by the company. I also recently gave a company-wide presentation"
+                        ++ " on advanced techniques in Typescript."
+                ]
             ]
-        , Element.paragraph
-            []
-            [ Element.text <|
-                "I have been working at Nude Solutions since 2019, where I've been working on a new"
-                    ++ " project that would simplify the process of offering insurance products on our platform."
-                    ++ " As part of this I spear-headed development on an in-house interpreter called SimpleCode"
-                    ++ " so our customers can convey complicated business logic without needing to learn a full"
-                    ++ " fledged programming language."
+            [ ".NET"
+            , "React"
+            , "Azure"
+            , "Remote"
             ]
-        , Element.paragraph
-            []
-            [ Element.text <|
-                "In addition, I've been very involved with the move to .NET Core, Linux support, Docker adoption and the"
-                    ++ " use of Azure App Services by the company. I also recently gave a company-wide presentation"
-                    ++ " on advanced techniques in Typescript."
-            ]
-        ]
-        [ ".NET"
-        , "React"
-        , "Azure"
-        , "Remote"
-        ]
-        { src = "/nudelogo.svg"
-        , description = "Nude Solutions logo"
-        , ratio = 773.23 / 252.68
-        }
-    , CardInfo "FireLyte"
-        [ Element.paragraph
-            []
-            [ Element.text <|
-                "2020 was the year that saw me launch my own company, CodeGolem Ltd."
-                    ++ " One of the reasons behind this decision was to start working on my own products, the first of which is FireLyte."
-            ]
-        , Element.image
-            (let
-                scale =
-                    scaleImage 250 354
-
-                attrs =
-                    case device.class of
-                        Phone ->
-                            scale 120
-
-                        Tablet ->
-                            scale 150
-
-                        _ ->
-                            scale 200
-             in
-             [ Element.alignRight
-             , Border.rounded 5
-             , Element.clip
-             ]
-                ++ attrs
-            )
-            { src = "/camping.jpg"
-            , description = "Stock photo of camping"
+            { src = "/nudelogo.svg"
+            , description = "Nude Solutions logo"
+            , ratio = 773.23 / 252.68
             }
-        , Element.paragraph
-            []
-            [ Element.text <|
-                " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
-                    ++ " and couldn't help feeling technology would dramatically improve the experience; Both for those already working in"
-                    ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
-                    ++ " Nix. If you're interested you can take a look at the source "
-            , Element.newTabLink
-                [ Font.underline ]
-                { url = "https://github.com/code-golem/campground"
-                , label = Element.text "here"
+    , \device ->
+        CardInfo "FireLyte"
+            [ Element.paragraph
+                []
+                [ Element.text <|
+                    "2020 was the year that saw me launch my own company, CodeGolem Ltd."
+                        ++ " One of the reasons behind this decision was to start working on my own products, the first of which is FireLyte."
+                ]
+            , Element.image
+                (let
+                    scale =
+                        scaleImage 250 354
+
+                    attrs =
+                        case device.class of
+                            Phone ->
+                                scale 120
+
+                            Tablet ->
+                                scale 150
+
+                            _ ->
+                                scale 200
+                 in
+                 [ Element.alignRight
+                 , Border.rounded 5
+                 , Element.clip
+                 ]
+                    ++ attrs
+                )
+                { src = "/camping.jpg"
+                , description = "Stock photo of camping"
                 }
-            , Element.text "!"
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
+                        ++ " and couldn't help feeling technology would dramatically improve the experience; Both for those already working in"
+                        ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
+                        ++ " Nix. If you're interested you can take a look at the source "
+                , Element.newTabLink
+                    [ Font.underline ]
+                    { url = "https://github.com/code-golem/campground"
+                    , label = Element.text "here"
+                    }
+                , Element.text "!"
+                ]
             ]
-        ]
-        [ "Nix"
-        , "Elm"
-        , "Elixir"
-        , "Multi-Tenant"
-        ]
-        { src = "/code-golem.svg"
-        , description = "Icon used for the CodeGolem github repo"
-        , ratio = 1
-        }
-    , CardInfo "Private Internet Access"
-        [ Element.paragraph
-            []
-            [ Element.text <|
-                "Private Internet Access is a remote-first company that provides a VPN"
-                    ++ " service to improve the privacy and security of their customers."
-                    ++ " I started working here in 2018, and was responsible for working"
-                    ++ " on their Chrome & Firefox web extensions."
+            [ "Nix"
+            , "Elm"
+            , "Elixir"
+            , "Multi-Tenant"
             ]
-        , Element.paragraph
-            []
-            [ Element.text <|
-                "As someone who cares deeply about privacy, this was somewhat of a dream"
-                    ++ " job for me coming out of school. I got to work with some very"
-                    ++ " talented individuals and experience working on a global product."
-                    ++ " This was my first time working on something so many people already"
-                    ++ " relied on day to day, which really forced me to change the way I"
-                    ++ " thought about development."
+            { src = "/code-golem.svg"
+            , description = "Icon used for the CodeGolem github repo"
+            , ratio = 1
+            }
+    , \device ->
+        CardInfo "Private Internet Access"
+            [ Element.paragraph
+                []
+                [ Element.text <|
+                    "Private Internet Access is a remote-first company that provides a VPN"
+                        ++ " service to improve the privacy and security of their customers."
+                        ++ " I started working here in 2018, and was responsible for working"
+                        ++ " on their Chrome & Firefox web extensions."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "As someone who cares deeply about privacy, this was somewhat of a dream"
+                        ++ " job for me coming out of school. I got to work with some very"
+                        ++ " talented individuals and experience working on a global product."
+                        ++ " This was my first time working on something so many people already"
+                        ++ " relied on day to day, which really forced me to change the way I"
+                        ++ " thought about development."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "Unfortunately, due to some ethical issues I had with the companies changing vision,"
+                        ++ " I ended up resigning after only a year in 2019 and taking the summer to"
+                        ++ " work on a blogging platform (currently unfinished) before starting at Nude Solutions"
+                ]
             ]
-        , Element.paragraph
-            []
-            [ Element.text <|
-                "Unfortunately, due to some ethical issues I had with the companies changing vision,"
-                    ++ " I ended up resigning after only a year in 2019 and taking the summer to"
-                    ++ " work on a blogging platform (currently unfinished) before starting at Nude Solutions"
+            [ "Privacy"
+            , "React"
+            , "Web Extensions"
+            , "Remote"
             ]
-        ]
-        [ "Privacy"
-        , "React"
-        , "Web Extensions"
-        , "Remote"
-        ]
-        { src = "/pia.png"
-        , description = "Private Internet Access icon"
-        , ratio = 1
-        }
-    , CardInfo "Ease"
-        [ Element.paragraph
-            []
-            [ Element.text "Finish Ease pls" ]
-        ]
-        [ "P2P"
-        , "React"
-        , "Redux"
-        ]
-        { src = ""
-        , description = ""
-        , ratio = 0
-        }
-    , CardInfo "IBM Canada"
-        [ Element.paragraph
-            []
-            [ Element.text "Finish IBM pls" ]
-        ]
-        [ "DevOps"
-        , "Internship"
-        , "Selenium"
-        ]
-        { src = ""
-        , description = ""
-        , ratio = 0
-        }
+            { src = "/pia.png"
+            , description = "Private Internet Access icon"
+            , ratio = 1
+            }
+    , \device ->
+        CardInfo "Ease"
+            [ Element.paragraph
+                []
+                [ Element.text "Finish Ease pls" ]
+            ]
+            [ "P2P"
+            , "React"
+            , "Redux"
+            ]
+            { src = ""
+            , description = ""
+            , ratio = 0
+            }
+    , \device ->
+        CardInfo "IBM Canada"
+            [ Element.paragraph
+                []
+                [ Element.text "Finish IBM pls" ]
+            ]
+            [ "DevOps"
+            , "Internship"
+            , "Selenium"
+            ]
+            { src = ""
+            , description = ""
+            , ratio = 0
+            }
     ]
 
 
