@@ -34,6 +34,13 @@ type Model
     | DomError Browser.Dom.Error
 
 
+type CardState
+    = AlwaysShown
+    | Shown
+    | Hidden
+    | Default
+
+
 type alias Cards =
     Animator.Timeline (List Card)
 
@@ -72,9 +79,8 @@ type alias Viewport =
 
 
 type alias Card =
-    { shown : Bool
+    { shown : CardState
     , hovered : Bool
-    , top : Maybe Int
     , render : Device -> CardInfo
     }
 
@@ -152,7 +158,7 @@ init flagsJson url key =
 
                 cardMetadata =
                     List.map
-                        (\c -> Card True False Nothing c)
+                        (\c -> Card Default False c)
                         cardInfo
 
                 animatedCards =
@@ -230,65 +236,59 @@ update msg model =
                     case res of
                         Ok locations ->
                             let
-                                updateTop location card =
-                                    { card | top = Just <| ceiling location.element.y }
-
                                 updateShown isShown card =
                                     { card | shown = isShown }
 
                                 updateCard card location =
                                     let
                                         isElementOnPage l =
-                                            l.element.y > l.viewport.height + l.viewport.y
+                                            l.element.y < l.viewport.height + l.viewport.y
                                     in
-                                    case card.top of
-                                        -- TODO: handle when there is less than threshold % of the page left to scroll
-                                        Just _ ->
-                                            if card.shown then
-                                                updateTop location card
-
-                                            else
-                                                let
-                                                    factor =
-                                                        0.7
-
-                                                    bottomOutFactor =
-                                                        0.1
-
-                                                    threshold =
-                                                        location.viewport.height * factor + location.viewport.y
-
-                                                    distanceToThreshold =
-                                                        location.element.y - threshold
-                                                in
-                                                if distanceToThreshold < 0 then
-                                                    card
-                                                        |> updateTop location
-                                                        |> updateShown True
-
-                                                else if location.scene.height - (location.viewport.y + location.viewport.height) < location.viewport.height * bottomOutFactor then
-                                                    card
-                                                        |> updateTop location
-                                                        |> updateShown True
-
-                                                else
-                                                    card
-                                                        |> updateTop location
-
-                                        Nothing ->
+                                    case card.shown of
+                                        Default ->
                                             if isElementOnPage location then
-                                                { card | shown = False }
-                                                    |> updateTop location
+                                                { card | shown = AlwaysShown }
 
                                             else
-                                                updateTop location card
+                                                { card | shown = Hidden }
+
+                                        AlwaysShown ->
+                                            card
+
+                                        Shown ->
+                                            card
+
+                                        Hidden ->
+                                            let
+                                                factor =
+                                                    0.7
+
+                                                bottomOutFactor =
+                                                    0.1
+
+                                                threshold =
+                                                    location.viewport.height * factor + location.viewport.y
+
+                                                distanceToThreshold =
+                                                    location.element.y - threshold
+                                            in
+                                            if distanceToThreshold < 0 then
+                                                card
+                                                    |> updateShown Shown
+
+                                            else if location.scene.height - (location.viewport.y + location.viewport.height) < location.viewport.height * bottomOutFactor then
+                                                card
+                                                    |> updateShown Shown
+
+                                            else
+                                                card
 
                                 cards =
                                     List.map2 updateCard (Animator.current page.cards) locations
                             in
                             ( Page
                                 { page
-                                    | cards = Animator.go Animator.quickly cards page.cards
+                                    | cards = Animator.go Animator.slowly cards page.cards
                                 }
                             , Cmd.none
                             )
@@ -406,7 +406,7 @@ view model =
 
             Page page ->
                 [ layout
-                    ([ Element.width fill
+                    ([ Element.htmlAttribute <| Html.Attributes.style "overflow-x" "hidden"
                      , Background.color Style.Colors.background
                      , Font.color Style.Colors.primaryFont
                      , Element.inFront <| viewHeader page
@@ -497,6 +497,7 @@ viewTimeline page =
                         content =
                             viewCard
                                 page.device
+                                page.dimensions
                                 page.cards
                                 i
 
@@ -531,10 +532,22 @@ viewTimeline page =
                                         , Element.centerY
                                         ]
                                         (Element.image
-                                            [ Element.height <| px imageHeight
-                                            , Element.width <| px imageWidth
-                                            , Element.centerX
-                                            ]
+                                            ([ Element.height <| px imageHeight
+                                             , Element.width <| px imageWidth
+                                             , Element.centerX
+                                             ]
+                                                ++ (case card.shown of
+                                                        Shown ->
+                                                            if modBy 2 i == 0 then
+                                                                [ fadeInRight, delayAnimation ]
+
+                                                            else
+                                                                [ fadeInLeft, delayAnimation ]
+
+                                                        _ ->
+                                                            []
+                                                   )
+                                            )
                                             { src = desktopImage.src
                                             , description = desktopImage.description
                                             }
@@ -556,10 +569,22 @@ viewTimeline page =
                                         , Element.centerY
                                         ]
                                         (Element.image
-                                            [ Element.height <| px imageHeight
-                                            , Element.width <| px imageWidth
-                                            , Element.centerX
-                                            ]
+                                            ([ Element.height <| px imageHeight
+                                             , Element.width <| px imageWidth
+                                             , Element.centerX
+                                             ]
+                                                ++ (case card.shown of
+                                                        Shown ->
+                                                            if modBy 2 i == 0 then
+                                                                [ fadeInRight, delayAnimation ]
+
+                                                            else
+                                                                [ fadeInLeft, delayAnimation ]
+
+                                                        _ ->
+                                                            []
+                                                   )
+                                            )
                                             { src = desktopImage.src
                                             , description = desktopImage.description
                                             }
@@ -579,10 +604,22 @@ viewTimeline page =
                                         [ Element.width <| Element.fillPortion 4
                                         ]
                                         (Element.image
-                                            [ Element.height <| px imageHeight
-                                            , Element.width <| px imageWidth
-                                            , Element.centerX
-                                            ]
+                                            ([ Element.height <| px imageHeight
+                                             , Element.width <| px imageWidth
+                                             , Element.centerX
+                                             ]
+                                                ++ (case card.shown of
+                                                        Shown ->
+                                                            if modBy 2 i == 0 then
+                                                                [ fadeInRight, delayAnimation ]
+
+                                                            else
+                                                                [ fadeInLeft, delayAnimation ]
+
+                                                        _ ->
+                                                            []
+                                                   )
+                                            )
                                             { src = desktopImage.src
                                             , description = desktopImage.description
                                             }
@@ -593,6 +630,7 @@ viewTimeline page =
                         [ Element.width fill
                         , card
                             |> .shown
+                            |> isVisible
                             |> not
                             |> visibility
                         ]
@@ -629,9 +667,8 @@ getCard : Int -> List Card -> Card
 getCard i cards =
     List.Extra.getAt i cards
         |> Maybe.withDefault
-            { shown = True
+            { shown = Shown
             , hovered = False
-            , top = Nothing
             , render =
                 \device ->
                     CardInfo "Fallback card"
@@ -644,9 +681,12 @@ getCard i cards =
             }
 
 
-viewCard : Device -> Cards -> Int -> Element Msg
-viewCard device cards i =
+viewCard : Device -> Dimensions -> Cards -> Int -> Element Msg
+viewCard device dimensions cards i =
     let
+        isEven =
+            modBy 2 i == 0
+
         card =
             getCard i <| Animator.current cards
 
@@ -696,14 +736,14 @@ viewCard device cards i =
                     22
     in
     Element.column
-        [ Background.color Style.Colors.dp01
-        , Element.width fill
-        , Font.color <| Style.Colors.primaryFont
-        , Element.alignLeft
-        , Element.centerY
-        , Border.rounded rounded
-        , Border.solid
-        , Animator.Inline.transform
+        ([ Background.color Style.Colors.dp01
+         , Element.width fill
+         , Font.color <| Style.Colors.primaryFont
+         , Element.alignLeft
+         , Element.centerY
+         , Border.rounded rounded
+         , Border.solid
+         , Animator.Inline.transform
             { position = { x = 0, y = 0 }
             , rotate = 0
             , scale =
@@ -716,7 +756,7 @@ viewCard device cards i =
                             Animator.at 1
             }
             |> Element.htmlAttribute
-        , Background.color <|
+         , Background.color <|
             Element.fromRgb <|
                 Color.toRgba <|
                     Animator.color cards <|
@@ -726,10 +766,22 @@ viewCard device cards i =
 
                             else
                                 Style.Colors.dp01Color
-        , cardAttr i
-        , Events.onMouseEnter <| CardHover i True
-        , Events.onMouseLeave <| CardHover i False
-        ]
+         , cardAttr i
+         , Events.onMouseEnter <| CardHover i True
+         , Events.onMouseLeave <| CardHover i False
+         ]
+            ++ (case card.shown of
+                    Shown ->
+                        if isEven then
+                            [ fadeInLeft ]
+
+                        else
+                            [ fadeInRight ]
+
+                    _ ->
+                        []
+               )
+        )
         ([ Element.el
             [ Background.color Style.Colors.dp01
             , Element.width fill
@@ -818,6 +870,22 @@ viewCard device cards i =
         )
 
 
+isVisible : CardState -> Bool
+isVisible state =
+    case state of
+        Hidden ->
+            False
+
+        AlwaysShown ->
+            True
+
+        Default ->
+            True
+
+        Shown ->
+            True
+
+
 headerHeight : DeviceClass -> Int
 headerHeight class =
     75
@@ -898,6 +966,11 @@ fadeInLeft =
 fadeInRight : Attribute Msg
 fadeInRight =
     Element.htmlAttribute <| Html.Attributes.class "animate__animated animate__fadeInRight"
+
+
+delayAnimation : Attribute Msg
+delayAnimation =
+    Element.htmlAttribute <| Html.Attributes.class "animate__delay-1s"
 
 
 cardId : Int -> String
@@ -1135,7 +1208,7 @@ cardInfo =
             , "Selenium"
             ]
             { src = "/IBM_logo.svg"
-            , description = ""
+            , description = "IBM's logo"
             , ratio = 1000 / 400
             }
     ]
