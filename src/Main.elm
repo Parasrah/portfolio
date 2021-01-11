@@ -6,6 +6,7 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Dom exposing (Error(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
+import Color
 import Element exposing (Attribute, Color, Device, DeviceClass(..), Element, fill, layout, px, text)
 import Element.Background as Background
 import Element.Border as Border
@@ -33,11 +34,15 @@ type Model
     | DomError Browser.Dom.Error
 
 
+type alias Cards =
+    Animator.Timeline (List Card)
+
+
 type alias IPage =
     { key : Key
     , dimensions : Dimensions
     , device : Device
-    , cards : Animator.Timeline (List Card)
+    , cards : Cards
     }
 
 
@@ -433,12 +438,9 @@ viewTimeline page =
 
                         content =
                             viewCard
-                                [ cardAttr i
-                                , Events.onMouseEnter <| CardHover i True
-                                , Events.onMouseLeave <| CardHover i False
-                                ]
                                 page.device
-                                info
+                                page.cards
+                                i
 
                         even =
                             modBy 2 i == 0
@@ -571,9 +573,34 @@ calculateImageDimensions ( maxWidth, maxHeight ) ratio =
 -- TODO: if there isn't 30% of page left, render when you can
 
 
-viewCard : List (Attribute Msg) -> Device -> CardInfo -> Element Msg
-viewCard attrs device info =
+getCard : Int -> List Card -> Card
+getCard i cards =
+    List.Extra.getAt i cards
+        |> Maybe.withDefault
+            { shown = True
+            , hovered = False
+            , top = Nothing
+            , render =
+                \device ->
+                    CardInfo "Fallback card"
+                        []
+                        []
+                        { src = ""
+                        , description = ""
+                        , ratio = 0
+                        }
+            }
+
+
+viewCard : Device -> Cards -> Int -> Element Msg
+viewCard device cards i =
     let
+        card =
+            getCard i <| Animator.current cards
+
+        info =
+            card.render device
+
         rounded =
             5
 
@@ -617,16 +644,40 @@ viewCard attrs device info =
                     22
     in
     Element.column
-        ([ Background.color Style.Colors.dp01
-         , Element.width fill
-         , Font.color <| Style.Colors.primaryFont
-         , Element.alignLeft
-         , Element.centerY
-         , Border.rounded rounded
-         , Border.solid
-         ]
-            ++ attrs
-        )
+        [ Background.color Style.Colors.dp01
+        , Element.width fill
+        , Font.color <| Style.Colors.primaryFont
+        , Element.alignLeft
+        , Element.centerY
+        , Border.rounded rounded
+        , Border.solid
+        , Animator.Inline.transform
+            { position = { x = 0, y = 0 }
+            , rotate = 0
+            , scale =
+                Animator.move cards <|
+                    \state ->
+                        if getCard i state |> .hovered then
+                            Animator.at 1.05
+
+                        else
+                            Animator.at 1
+            }
+            |> Element.htmlAttribute
+        , Background.color <|
+            Element.fromRgb <|
+                Color.toRgba <|
+                    Animator.color cards <|
+                        \state ->
+                            if getCard i state |> .hovered then
+                                Style.Colors.dp04Color
+
+                            else
+                                Style.Colors.dp01Color
+        , cardAttr i
+        , Events.onMouseEnter <| CardHover i True
+        , Events.onMouseLeave <| CardHover i False
+        ]
         ([ Element.el
             [ Background.color Style.Colors.dp01
             , Element.width fill

@@ -1,5 +1,6 @@
 module Style.Colors exposing (..)
 
+import Color as ElmColor
 import Element exposing (Color, rgb255, rgba255)
 
 
@@ -38,9 +39,19 @@ background =
     rgb255 32 33 36
 
 
+dp00Color : ElmColor.Color
+dp00Color =
+    ElmColor.rgba 255 255 255 0.0
+
+
 dp00 : Color
 dp00 =
     rgba255 255 255 255 0.0
+
+
+dp01Color : ElmColor.Color
+dp01Color =
+    ElmColor.rgba 255 255 255 0.05
 
 
 dp01 : Color
@@ -48,9 +59,19 @@ dp01 =
     rgba255 255 255 255 0.05
 
 
+dp02Color : ElmColor.Color
+dp02Color =
+    ElmColor.rgba 255 255 255 0.07
+
+
 dp02 : Color
 dp02 =
     rgba255 255 255 255 0.07
+
+
+dp03Color : ElmColor.Color
+dp03Color =
+    ElmColor.rgba 255 255 255 0.08
 
 
 dp03 : Color
@@ -58,14 +79,29 @@ dp03 =
     rgba255 255 255 255 0.08
 
 
+dp04Color : ElmColor.Color
+dp04Color =
+    ElmColor.rgba 255 255 255 0.09
+
+
 dp04 : Color
 dp04 =
     rgba255 255 255 255 0.09
 
 
+dp06Color : ElmColor.Color
+dp06Color =
+    ElmColor.rgba 255 255 255 0.11
+
+
 dp06 : Color
 dp06 =
     rgba255 255 255 255 0.11
+
+
+dp08Color : ElmColor.Color
+dp08Color =
+    ElmColor.rgba 255 255 255 0.12
 
 
 dp08 : Color
