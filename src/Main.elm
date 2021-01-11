@@ -220,7 +220,10 @@ update msg model =
                 -- moved
                 OnScroll ->
                     ( model
-                    , Task.perform OnDimensions Browser.Dom.getViewport
+                    , Cmd.batch
+                        [ Task.perform OnDimensions Browser.Dom.getViewport
+                        , fetchCardLocations <| Animator.current page.cards
+                        ]
                     )
 
                 OnCardLocations res ->
@@ -230,15 +233,39 @@ update msg model =
                                 updateTop location card =
                                     { card | top = Just <| ceiling location.element.y }
 
+                                updateShown isShown card =
+                                    { card | shown = isShown }
+
                                 updateCard card location =
-                                    case card.top of
-                                        -- TODO: on subsequent passes, show those that make their way far enough onto the screen
+                                    let
+                                        isElementOnPage l =
+                                            l.element.y > l.viewport.height + l.viewport.y
+                                    in
+                                    case Debug.log "here" card.top of
                                         -- TODO: handle when there is less than threshold % of the page left to scroll
-                                        Just top ->
-                                            updateTop location card
+                                        Just _ ->
+                                            if card.shown then
+                                                updateTop location card
+
+                                            else
+                                                let
+                                                    threshold =
+                                                        location.viewport.height * 0.7 + location.viewport.y
+
+                                                    distanceToThreshold =
+                                                        Debug.log "distance to threshold" <| location.element.y - threshold
+                                                in
+                                                if distanceToThreshold < 0 then
+                                                    card
+                                                        |> updateTop location
+                                                        |> updateShown True
+
+                                                else
+                                                    card
+                                                        |> updateTop location
 
                                         Nothing ->
-                                            if Debug.log "here" <| location.element.y > location.viewport.height + location.viewport.y then
+                                            if isElementOnPage location then
                                                 { card | shown = False }
                                                     |> updateTop location
 
@@ -342,6 +369,7 @@ view model =
                     ([ Element.width fill
                      , Background.color Style.Colors.background
                      , Font.color Style.Colors.primaryFont
+                     , Element.clipX
                      ]
                         ++ Style.Fonts.regular
                     )
@@ -578,12 +606,6 @@ calculateImageDimensions ( maxWidth, maxHeight ) ratio =
 
     else
         ( floor widthWithMaxHeight, maxHeight )
-
-
-
--- TODO: make card slightly larger when hovered (animate)
--- TODO: render cards when they are scrolled 30% into page
--- TODO: if there isn't 30% of page left, render when you can
 
 
 getCard : Int -> List Card -> Card
