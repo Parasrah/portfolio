@@ -152,7 +152,7 @@ init flagsJson url key =
 
                 cardMetadata =
                     List.map
-                        (\c -> Card False False Nothing c)
+                        (\c -> Card True False Nothing c)
                         cardInfo
 
                 animatedCards =
@@ -227,17 +227,30 @@ update msg model =
                     case res of
                         Ok locations ->
                             let
-                                cardMetadata =
-                                    List.map2
-                                        (\card location ->
-                                            { card | top = Just <| ceiling location.element.y }
-                                        )
-                                        (Animator.current page.cards)
-                                        locations
+                                updateTop location card =
+                                    { card | top = Just <| ceiling location.element.y }
+
+                                updateCard card location =
+                                    case card.top of
+                                        -- TODO: on subsequent passes, show those that make their way far enough onto the screen
+                                        -- TODO: handle when there is less than threshold % of the page left to scroll
+                                        Just top ->
+                                            updateTop location card
+
+                                        Nothing ->
+                                            if Debug.log "here" <| location.element.y > location.viewport.height + location.viewport.y then
+                                                { card | shown = False }
+                                                    |> updateTop location
+
+                                            else
+                                                updateTop location card
+
+                                cards =
+                                    List.map2 updateCard (Animator.current page.cards) locations
                             in
                             ( Page
                                 { page
-                                    | cards = Animator.go Animator.immediately cardMetadata page.cards
+                                    | cards = Animator.go Animator.quickly cards page.cards
                                 }
                             , Cmd.none
                             )
@@ -536,7 +549,7 @@ viewTimeline page =
                         , card
                             |> .shown
                             |> not
-                            |> hidden
+                            |> visibility
                         ]
                         (if even then
                             rowElements
@@ -862,9 +875,13 @@ cardAttr i =
     Element.htmlAttribute <| Html.Attributes.id id
 
 
-hidden : Bool -> Attribute Msg
-hidden bool =
-    Element.htmlAttribute <| Html.Attributes.hidden bool
+visibility : Bool -> Attribute Msg
+visibility flag =
+    if flag then
+        Element.htmlAttribute <| Html.Attributes.style "visibility" "hidden"
+
+    else
+        Element.htmlAttribute <| Html.Attributes.style "visibility" "visible"
 
 
 
