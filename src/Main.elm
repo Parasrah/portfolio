@@ -241,7 +241,7 @@ update msg model =
                                         isElementOnPage l =
                                             l.element.y > l.viewport.height + l.viewport.y
                                     in
-                                    case Debug.log "here" card.top of
+                                    case card.top of
                                         -- TODO: handle when there is less than threshold % of the page left to scroll
                                         Just _ ->
                                             if card.shown then
@@ -249,13 +249,24 @@ update msg model =
 
                                             else
                                                 let
+                                                    factor =
+                                                        0.7
+
+                                                    bottomOutFactor =
+                                                        0.1
+
                                                     threshold =
-                                                        location.viewport.height * 0.7 + location.viewport.y
+                                                        location.viewport.height * factor + location.viewport.y
 
                                                     distanceToThreshold =
-                                                        Debug.log "distance to threshold" <| location.element.y - threshold
+                                                        location.element.y - threshold
                                                 in
                                                 if distanceToThreshold < 0 then
+                                                    card
+                                                        |> updateTop location
+                                                        |> updateShown True
+
+                                                else if location.scene.height - (location.viewport.y + location.viewport.height) < location.viewport.height * bottomOutFactor then
                                                     card
                                                         |> updateTop location
                                                         |> updateShown True
@@ -446,8 +457,14 @@ viewTimeline page =
                     Phone ->
                         30
 
-                    _ ->
+                    Tablet ->
                         50
+
+                    Desktop ->
+                        50
+
+                    BigDesktop ->
+                        60
           in
           Element.paddingEach
             { top = 0
@@ -693,7 +710,7 @@ viewCard device cards i =
                 Animator.move cards <|
                     \state ->
                         if getCard i state |> .hovered then
-                            Animator.at 1.05
+                            Animator.at 1.04
 
                         else
                             Animator.at 1
@@ -1103,9 +1120,9 @@ cardInfo =
             , "React"
             , "Redux"
             ]
-            { src = ""
-            , description = ""
-            , ratio = 0
+            { src = "/ease.png"
+            , description = "Screenshot of Ease video player"
+            , ratio = 500 / 226
             }
     , \device ->
         CardInfo "IBM Canada"
@@ -1117,9 +1134,9 @@ cardInfo =
             , "Internship"
             , "Selenium"
             ]
-            { src = ""
+            { src = "/IBM_logo.svg"
             , description = ""
-            , ratio = 0
+            , ratio = 1000 / 400
             }
     ]
 
