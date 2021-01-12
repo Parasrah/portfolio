@@ -1221,7 +1221,7 @@ cardInfo =
                         ++ " voted into positions to support the other interns that year. After being part of the Future Blue"
                         ++ " Web Team for a few months, I was elected to be one of the two leaders. This involved us running"
                         ++ " weekly sessions for the members to plan and work on projects, planning the yearly Web Hackathon"
-                        ++ " and volunteer for events such as \"Take your kids to work\" day."
+                        ++ " and volunteering for events such as \"Take your kids to work\" day."
                 ]
             ]
             [ "DevOps"
