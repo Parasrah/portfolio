@@ -1146,7 +1146,7 @@ cardInfo =
                 []
                 [ Element.text <|
                     " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
-                        ++ " and couldn't help feeling technology would dramatically improve the experience; Both for those already working in"
+                        ++ " and couldn't help feeling technology would dramatically improve the experience; both for those already working in"
                         ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
                         ++ " Nix. If you're interested you can take a look at the source "
                 , Element.newTabLink
@@ -1167,6 +1167,47 @@ cardInfo =
             { src = "/code-golem.svg"
             , description = "Icon used for the CodeGolem github repo"
             , ratio = 1
+            }
+    , \device ->
+        CardInfo "Nix"
+            [ Element.paragraph
+                []
+                [ Element.text <|
+                    "Until 2019, I would find myself re-installing whatever distro I happened to be"
+                        ++ " using every year, in an attempt to avoid all the inadvertent side-effects I'd"
+                        ++ " accidentally incurred during my daily use. I had heard of the nix package"
+                        ++ " manager before, even tried it out, but hadn't given it further thought. That is,"
+                        ++ " until I discovered NixOS."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "I was instantly hooked. I have always enjoyed DevOps; tinkering with CI and CD on my"
+                        ++ " personal projects always brought with it a quiet tranquility as the hours passed"
+                        ++ " by. NixOS just opened the flood gates. Originally enticed by not having to refresh my"
+                        ++ " machines, the idea was quickly reinforced as I discovered I could roll back "
+                        ++ " to a previous state "
+                , Element.el [ Font.strike ] (Element.text "if")
+                , Element.text <|
+                    " when I messed something up. The thing is, it didn't stop there. There were constantly new"
+                        ++ " things to discover, challenges to overcome and novel features to try out. For months"
+                        ++ " I spent my free time exploring the possibilities of NixOps, trying to get it working"
+                        ++ " with Elm and Elixir and just trying to learn more. Finally, I started putting my"
+                        ++ " newfound knowledge to work in the form of FireLyte."
+                ]
+            , Element.paragraph []
+                [ Element.text <|
+                    "Nix has cost me countless hours, taught me countless lessons and shown me how much I enjoy"
+                        ++ " doing this kind of work. And I can't wait to learn more."
+                ]
+            ]
+            [ "DevOps"
+            , "Linux"
+            , "Nix"
+            ]
+            { src = "/nix.svg"
+            , description = "Nix's Logo"
+            , ratio = 535.15 / 464.15
             }
     , \device ->
         CardInfo "Private Internet Access"
