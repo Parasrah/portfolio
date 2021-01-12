@@ -43,6 +43,8 @@ type alias Config =
     , headerFontSize : Int
     , headerHeight : Int
     , headerIconSpacing : Int
+    , summaryFillerPortion : Int
+    , bioImageSize : Int
     }
 
 
@@ -64,6 +66,8 @@ config device =
             , headerFontSize = 24
             , headerHeight = 75
             , headerIconSpacing = 15
+            , summaryFillerPortion = 0
+            , bioImageSize = 120
             }
 
         Tablet ->
@@ -81,6 +85,8 @@ config device =
             , headerFontSize = 30
             , headerHeight = 75
             , headerIconSpacing = 30
+            , summaryFillerPortion = 1
+            , bioImageSize = 300
             }
 
         Desktop ->
@@ -98,6 +104,8 @@ config device =
             , headerFontSize = 30
             , headerHeight = 75
             , headerIconSpacing = 30
+            , summaryFillerPortion = 1
+            , bioImageSize = 400
             }
 
         BigDesktop ->
@@ -115,6 +123,8 @@ config device =
             , headerFontSize = 30
             , headerHeight = 75
             , headerIconSpacing = 30
+            , summaryFillerPortion = 2
+            , bioImageSize = 350
             }
 
 
@@ -144,6 +154,7 @@ type alias IPage =
     , dimensions : Dimensions
     , device : Device
     , cards : Cards
+    , summaryHovered : Animator.Timeline Bool
     }
 
 
@@ -204,6 +215,9 @@ pageAnimator =
         |> Animator.watching
             .cards
             (\newCards model -> { model | cards = newCards })
+        |> Animator.watching
+            .summaryHovered
+            (\newSummaryHovered model -> { model | summaryHovered = newSummaryHovered })
 
 
 
@@ -217,9 +231,11 @@ type Msg
     | OnResize
     | OnScroll
     | OnCardLocations (Result Browser.Dom.Error (List Browser.Dom.Element))
+      -- TODO: allow collapsing the cards on mobile
     | ReadMore Int
     | Tick Time.Posix
     | CardHover Int Bool
+    | SummaryHover Bool
 
 
 
@@ -263,6 +279,7 @@ init flagsJson url key =
                 , device = device
                 , dimensions = flags.dimensions
                 , cards = animatedCards
+                , summaryHovered = Animator.init False
                 }
             , fetchCardLocations cardMetadata
             )
@@ -415,12 +432,11 @@ update msg model =
                         Nothing ->
                             ( model, Cmd.none )
 
+                SummaryHover isHovered ->
+                    ( Page { page | summaryHovered = Animator.go Animator.slowly isHovered page.summaryHovered }, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
-
-
-
--- TODO: should I delay this slightly to ensure rendering happens first?
 
 
 fetchCardLocations : List cards -> Cmd Msg
@@ -515,16 +531,166 @@ view model =
 viewPage : IPage -> Element Msg
 viewPage page =
     Element.column
-        [ Element.paddingEach
+        [ let
+            paddingX =
+                config page.device |> .timelinePaddingX
+          in
+          Element.paddingEach
             { top =
                 (config page.device |> .headerHeight)
                     + (config page.device |> .pagePaddingTop)
-            , bottom = 0
-            , left = 0
-            , right = 0
+            , bottom = 80
+            , left = paddingX
+            , right = paddingX
             }
+        , Element.spacing (config page.device |> .timelineSpacing)
+        , Region.mainContent
         ]
+        -- [ viewSummary page
         [ viewTimeline page
+        ]
+
+
+viewSummary : IPage -> Element Msg
+viewSummary page =
+    let
+        rounded =
+            5
+
+        { device } =
+            page
+
+        headerFooterHeight =
+            config device |> .headerFooterHeight
+
+        headerFontSize =
+            config device |> .cardHeaderFontSize
+
+        cardFontSize =
+            config device |> .cardFontSize
+
+        bioImageSize =
+            config device |> .bioImageSize
+
+        summaryFillerPortion =
+            config device |> .summaryFillerPortion
+
+        p1 =
+            Element.paragraph
+                [ Font.size cardFontSize ]
+                [ Element.text <|
+                    "Hi! My name is Brad Pfannmuller, and I built this website to tell"
+                        ++ " you a little bit about myself! I live in a small apartment"
+                        ++ " with my girlfriend in Calgary, Alberta."
+                ]
+
+        p2 =
+            Element.paragraph
+                [ Font.size cardFontSize ]
+                [ Element.text <|
+                    "I was fortunate to grow up so close to the Rocky Mountains, and spent"
+                        ++ " a lot of my childhood camping. As an adult I still enjoy camping,"
+                        ++ " and also enjoy hiking, video games and coding. I hope you learn"
+                        ++ " "
+                ]
+
+        profile =
+            Element.image
+                [ Border.rounded (bioImageSize // 2)
+                , Element.clip
+                , Element.width <| px bioImageSize
+                , Element.height <| px bioImageSize
+                , Element.alignLeft
+                ]
+                { src = "/brad.jpg"
+                , description = "A picture of me!"
+                }
+
+        mobileHeading () =
+            Element.el
+                [ Background.color Style.Colors.dp01
+                , Element.width fill
+                , Element.height <| px headerFooterHeight
+                , Border.roundEach { topLeft = rounded, topRight = rounded, bottomLeft = 0, bottomRight = 0 }
+                ]
+                (Element.el
+                    [ Element.centerY
+                    , Element.paddingXY (config device |> .cardHeaderPaddingX) 0
+                    , Font.size headerFontSize
+                    , Region.heading 2
+                    ]
+                    (Element.text "Bio")
+                )
+    in
+    Element.row
+        [ Element.width fill ]
+        [ Element.el [ Element.width <| Element.fillPortion summaryFillerPortion ] Element.none
+        , Element.column
+            [ Background.color Style.Colors.dp01
+            , Element.width <| Element.fillPortion 5
+            , Font.color <| Style.Colors.primaryFont
+            , Element.alignLeft
+            , Element.centerY
+            , Border.rounded rounded
+            , Border.solid
+            , Events.onMouseEnter <| SummaryHover True
+            , Events.onMouseLeave <| SummaryHover False
+            , Animator.Inline.transform
+                { position = { x = 0, y = 0 }
+                , rotate = 0
+                , scale =
+                    Animator.move page.summaryHovered <|
+                        \state ->
+                            if state then
+                                Animator.at 1.04
+
+                            else
+                                Animator.at 1
+                }
+                |> Element.htmlAttribute
+            , Background.color <|
+                Element.fromRgb <|
+                    Color.toRgba <|
+                        Animator.color page.summaryHovered <|
+                            \state ->
+                                if state then
+                                    Style.Colors.dp04Color
+
+                                else
+                                    Style.Colors.dp01Color
+            ]
+            (if isMobile page.device then
+                [ Element.column
+                    [ Element.width fill
+                    , Element.padding 20
+                    , Element.spacing 20
+                    ]
+                    [ Element.row
+                        [ Element.spacing 20 ]
+                        [ profile
+                        , p1
+                        ]
+                    , p2
+                    ]
+                ]
+
+             else
+                [ Element.textColumn
+                    [ Element.padding (config device |> .cardContentPadding)
+                    , Font.size cardFontSize
+                    , Element.width fill
+                    , Element.spacing 20
+                    ]
+                    [ Element.textColumn
+                        []
+                        [ profile
+                        , p1
+                        , p2
+                        ]
+                    ]
+                ]
+            )
+        , Element.el [ Element.width <| Element.fillPortion summaryFillerPortion ] Element.none
         ]
 
 
@@ -533,18 +699,7 @@ viewTimeline page =
     Element.column
         [ Element.height fill
         , Element.width fill
-        , let
-            paddingX =
-                config page.device |> .timelinePaddingX
-          in
-          Element.paddingEach
-            { top = 0
-            , left = paddingX
-            , right = paddingX
-            , bottom = 100
-            }
         , Element.spacing (config page.device |> .timelineSpacing)
-        , Region.mainContent
         ]
         (Animator.current page.cards
             |> List.indexedMap
@@ -878,6 +1033,16 @@ viewCard device dimensions cards i =
         )
 
 
+isMobile : Device -> Bool
+isMobile { class } =
+    case class of
+        Phone ->
+            True
+
+        _ ->
+            False
+
+
 isVisible : CardState -> Bool
 isVisible state =
     case state of
@@ -1191,7 +1356,7 @@ cardInfo =
                 , Element.text <|
                     " when I messed something up. The thing is, it didn't stop there. There were constantly new"
                         ++ " things to discover, challenges to overcome and novel features to try out. For months"
-                        ++ " I spent my free time exploring the possibilities of NixOps, trying to get it working"
+                        ++ " I spent my free time exploring the possibilities, trying to get it working"
                         ++ " with Elm and Elixir and just trying to learn more. Finally, I started putting my"
                         ++ " newfound knowledge to work in the form of FireLyte."
                 ]
