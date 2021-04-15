@@ -7,14 +7,14 @@ import Browser.Dom exposing (Error(..))
 import Browser.Events
 import Browser.Navigation exposing (Key)
 import Color
-import Element exposing (Attribute, Color, Device, DeviceClass(..), Element, fill, layout, px, text)
+import Element exposing (Attribute, Device, DeviceClass(..), Element, fill, layout, px, text)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
 import Html.Attributes
-import Json.Decode as D exposing (Decoder, Value, int)
+import Json.Decode as D exposing (Decoder, Value)
 import Json.Decode.Pipeline exposing (required)
 import List.Extra
 import Style.Colors
@@ -22,6 +22,21 @@ import Style.Fonts
 import Task
 import Time
 import Url exposing (Url)
+
+
+{-
+    Woah! Why so many lines of code in a single file??
+
+    Before you make too many judgements, this was an intentional choice on
+    my part. If you like conference talks, this is a great one:
+
+    https://www.youtube.com/watch?v=XpDsk374LDE
+
+    If you don't, here is a TLDR. Many of the reasons to keep files short
+    don't apply to a language like Elm because of the strong guarantees it
+    gives you, so what dictates file length can be the module system and
+    how you choose to leverage it.
+-}
 
 
 
