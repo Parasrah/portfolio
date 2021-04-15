@@ -11,5 +11,9 @@
         sslCertificate = ./.secrets/ssl/parasrah_com.crt;
         sslCertificateKey = ./.secrets/ssl/parasrah.key;
       };
+
+      services.nginx.virtualHosts."www.parasrah.com" = {
+        locations."/".return = "301 https://parasrah.com$request_uri";
+      };
     };
 }
