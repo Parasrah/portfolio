@@ -24,22 +24,20 @@ import Time
 import Url exposing (Url)
 
 
+
 {-
-    Woah! Why so many lines of code in a single file??
+   Woah! Why so many lines of code in a single file??
 
-    Before you make too many judgements, this was an intentional choice on
-    my part. If you like conference talks, this is a great one:
+   Before you make too many judgements, this was an intentional choice on
+   my part. If you like conference talks, this is a great one:
 
-    https://www.youtube.com/watch?v=XpDsk374LDE
+   https://www.youtube.com/watch?v=XpDsk374LDE
 
-    If you don't, here is a TLDR. Many of the reasons to keep files short
-    don't apply to a language like Elm because of the strong guarantees it
-    gives you, so what dictates file length can be the module system and
-    how you choose to leverage it.
+   If you don't, here is a TLDR. Many of the reasons to keep files short
+   don't apply to a language like Elm because of the strong guarantees it
+   gives you, so what dictates file length can be the module system and
+   how you choose to leverage it.
 -}
-
-
-
 {- Config -}
 
 
@@ -1325,18 +1323,19 @@ cardInfo =
             , Element.paragraph
                 []
                 [ Element.text <|
-                    " FireLyte is a multi-tenant software platform targeting the camping industry. Like many Albertans, I love camping,"
-                        ++ " and couldn't help feeling technology would dramatically improve the experience; both for those already working in"
-                        ++ " the camping industry and customers trying to find a place to camp. What I have so far is built using Elixir/Phoenix, Elm and"
-                        ++ " Nix. If you're interested you can take a look at the source "
-                , Element.newTabLink
-                    [ Font.underline
-                    , Region.description "Source code of FireLyte"
-                    ]
-                    { url = "https://github.com/code-golem/campground"
-                    , label = Element.text "here"
-                    }
-                , Element.text "!"
+                    " FireLyte is a multi-tenant software platform targeting"
+                        ++ " the camping industry. Like many Albertans, I love camping,"
+                        ++ " and couldn't help feeling technology would dramatically"
+                        ++ " improve the experience; both for those already working in"
+                        ++ " the camping industry and customers trying to find a place"
+                        ++ " to camp."
+                ]
+            , Element.paragraph
+                []
+                [ Element.text <|
+                    "What I have so far is a RESTful API leveraging"
+                        ++ " Elixir/Phoenix, a SPA built in Elm and"
+                        ++ " environments/deployments managed using Nix+NixOS+NixOps."
                 ]
             ]
             [ "Nix"
