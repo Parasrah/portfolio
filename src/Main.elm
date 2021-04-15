@@ -557,6 +557,7 @@ viewPage page =
             , right = paddingX
             }
         , Element.spacing (config page.device |> .timelineSpacing)
+        , Element.width fill
         , Region.mainContent
         ]
         -- [ viewSummary page
@@ -1097,7 +1098,7 @@ viewHeader page =
             , Element.spacing (config page.device |> .headerIconSpacing)
             ]
             [ Element.newTabLink
-                [ Region.description "My github account"
+                [ Region.description "My Github account"
                 ]
                 { url = "https://github.com/parasrah"
                 , label =
@@ -1107,7 +1108,7 @@ viewHeader page =
                         , Element.height <| px (config page.device |> .iconSize)
                         ]
                         { src = "/github.svg"
-                        , description = "Github, where I host most of my code"
+                        , description = "github"
                         }
                 }
             , Element.newTabLink
@@ -1121,11 +1122,11 @@ viewHeader page =
                         , Element.height <| px (config page.device |> .iconSize)
                         ]
                         { src = "/linkedin.svg"
-                        , description = "LinkedIn, the popular career platform"
+                        , description = "linkedin"
                         }
                 }
             , Element.link
-                [ Region.description "My email"
+                [ Region.description "My email address"
                 ]
                 { url = "mailto:jobs@parasrah.com"
                 , label =
@@ -1135,7 +1136,7 @@ viewHeader page =
                         , Element.height <| px (config page.device |> .iconSize)
                         ]
                         { src = "/mail.svg"
-                        , description = "Send me an email!"
+                        , description = "Email"
                         }
                 }
             , Element.newTabLink
@@ -1149,7 +1150,7 @@ viewHeader page =
                         , Element.height <| px (config page.device |> .iconSize)
                         ]
                         { src = "/code.svg"
-                        , description = "Source code for this website"
+                        , description = "source"
                         }
                 }
             ]
