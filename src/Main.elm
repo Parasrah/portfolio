@@ -655,11 +655,12 @@ viewSummary page =
                 , scale =
                     Animator.move page.summaryHovered <|
                         \state ->
-                            if state then
-                                Animator.at 1.04
-
-                            else
-                                Animator.at 1
+                            -- TODO: fix this conflicting with animate.css
+                            -- if state then
+                            --     Animator.at 1.04
+                            -- else
+                            --     Animator.at 1
+                            Animator.at 1
                 }
                 |> Element.htmlAttribute
             , Background.color <|
@@ -947,11 +948,12 @@ viewCard device dimensions cards i =
             , scale =
                 Animator.move cards <|
                     \state ->
-                        if getCard i state |> .hovered then
-                            Animator.at 1.04
-
-                        else
-                            Animator.at 1
+                        -- TODO: fix this conflicting with animate.css
+                        -- if getCard i state |> .hovered then
+                        --     Animator.at 1.04
+                        -- else
+                        --     Animator.at 1
+                        Animator.at 1
             }
             |> Element.htmlAttribute
          , Background.color <|
