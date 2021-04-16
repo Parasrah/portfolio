@@ -1294,18 +1294,18 @@ cardInfo =
                 []
                 [ Element.text <|
                     "Humanism is a game/simulation I've been working on,"
-                    ++ " both because it's something I want to exist, and to reinforce"
-                    ++ " my understanding of OTP concepts in Elixir. The game engine is written"
-                    ++ " entirely in Elixir (although I have plans to try out"
-                    ++ " Rust NIF's in the future), while the client is a Rust TUI"
-                    ++ " (Terminal User Interface)."
+                        ++ " both because it's something I want to exist, and to reinforce"
+                        ++ " my understanding of OTP concepts in Elixir. The game engine is written"
+                        ++ " entirely in Elixir (although I have plans to try out"
+                        ++ " Rust NIF's in the future), while the client is a Rust TUI"
+                        ++ " (Terminal User Interface)."
                 ]
             , Element.paragraph
                 []
                 [ Element.text <|
                     "The current plan is to offer the TUI version of the game"
-                    ++ " for free, so when it's playable I will be sure to update"
-                    ++ " this with a link if you're interested in trying it out."
+                        ++ " for free, so when it's playable I will be sure to update"
+                        ++ " this with a link if you're interested in trying it out."
                 ]
             ]
             [ "Elixir"
