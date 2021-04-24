@@ -12,6 +12,5 @@ Aside from Elm, the only other package (at time of writing) being used is [anima
 
 ## Deployment
 
-While you may notice this repo has been integrated with Netlify for CI & automated deploys, the domain `https://parasrah.com` is not pointing at one of Netlify's servers. This is
-because I am purely using it for CI validation and previews, and the "production" instance is hosted using NixOps. You will only find the logical configuration (`/logical.nix`)
-in this repo, as this is currently being combined with one of my other deployment configurations.
+While you may notice this repo has bven integrated with Netlify for CI & automated deploys, the domain `https://parasrah.com` is not pointing at one of Netlify's servers. This is
+because I am purely using it for CI validation and previews, and the "production" instance is hosted using [NixOps](https://github.com/NixOS/nixops).
